@@ -5,37 +5,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>YouTube Xe</title>
+  <meta name="format-detection" content="telephone=no">
+  <title>YouTube — Desktop Mode</title>
   <link rel="icon" href="https://www.youtube.com/favicon.ico">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif; }
     :root {
-      --bg: #0f0f0f;
-      --surface: #212121;
-      --hover: #303030;
-      --text: #fff;
-      --text-secondary: #aaa;
-      --red: #ff0000;
-      --border: #3f3f3f;
-      --sidebar-width: 240px;
+      --bg: #0f0f0f; --surface: #212121; --hover: #303030;
+      --text: #fff; --text-secondary: #aaa; --red: #ff0000; --border: #3f3f3f;
+      --sidebar-w: 240px;
     }
-    body { background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
     a { text-decoration: none; color: inherit; }
 
-    /* === Bố cục chính === */
-    .app-layout { display: flex; flex-direction: column; min-height: 100vh; }
+    /* === Bố cục chính giống YouTube Desktop === */
+    .app { display: flex; min-height: 100vh; }
+    
+    /* Thanh bên trái */
+    .sidebar {
+      width: var(--sidebar-w); flex-shrink: 0; padding: 12px;
+      position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto;
+      background: var(--bg); border-right: 1px solid #272727; z-index: 50;
+    }
+    .sidebar-logo {
+      display: flex; align-items: center; gap: 4px; font-size: 20px; font-weight: 700;
+      padding: 12px 12px 20px; color: var(--text);
+    }
+    .sidebar-logo-icon { color: var(--red); font-size: 26px; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 24px; padding: 10px 12px; border-radius: 8px;
+      cursor: pointer; margin-bottom: 4px; font-size: 14px;
+    }
+    .sidebar-item:hover { background: var(--hover); }
+    .sidebar-item.active { background: var(--surface); font-weight: 600; }
+    .sidebar-icon { font-size: 20px; width: 24px; text-align: center; }
+    .sidebar-divider { height: 1px; background: var(--border); margin: 12px 0; }
+    .sidebar-title { font-size: 14px; font-weight: 600; padding: 10px 12px; color: var(--text-secondary); }
+
+    /* Nội dung chính */
+    .main { flex: 1; margin-left: var(--sidebar-w); padding: 0 24px; }
     
     /* Thanh trên cùng */
     .top-bar {
-      position: sticky; top: 0; z-index: 100;
-      background: var(--bg); display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; gap: 16px;
+      position: sticky; top: 0; z-index: 40; background: var(--bg);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 0; margin: 0 -24px 20px; padding-inline: 24px;
+      border-bottom: 1px solid #272727;
     }
-    .logo { display: flex; align-items: center; gap: 4px; font-size: 20px; font-weight: 700; color: var(--text); }
-    .logo-icon { color: var(--red); font-size: 26px; }
-    .search-bar { flex: 1; max-width: 640px; display: flex; }
+    .search-bar { flex: 1; max-width: 640px; display: flex; margin: 0 20px; }
     .search-input {
-      flex: 1; padding: 10px 14px; font-size: 16px; border: 1px solid var(--border);
+      flex: 1; padding: 10px 16px; font-size: 16px; border: 1px solid var(--border);
       border-radius: 20px 0 0 20px; background: #121212; color: var(--text); outline: none;
     }
     .search-btn {
@@ -45,211 +64,246 @@
     .top-actions { display: flex; align-items: center; gap: 16px; }
     .action-icon { font-size: 20px; cursor: pointer; padding: 8px; border-radius: 50%; }
     .action-icon:hover { background: var(--hover); }
+    .mode-badge {
+      font-size: 11px; background: #22c55e; color: #fff; padding: 2px 6px; border-radius: 10px; font-weight: 600;
+    }
     .user-avatar {
       width: 32px; height: 32px; border-radius: 50%; background: var(--red);
       display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer;
     }
 
-    /* Nội dung chính */
-    .main-wrapper { display: flex; flex: 1; }
-    .sidebar {
-      width: var(--sidebar-width); flex-shrink: 0; padding: 12px;
-      position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto;
-    }
-    .sidebar-item {
-      display: flex; align-items: center; gap: 24px; padding: 10px 12px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; font-size: 14px;
-    }
-    .sidebar-item:hover { background: var(--hover); }
-    .sidebar-item.active { background: var(--surface); font-weight: 600; }
-    .sidebar-icon { font-size: 20px; width: 24px; text-align: center; }
-
-    .content { flex: 1; padding: 20px; }
-    .category-tabs { display: flex; gap: 12px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
-    .tab {
-      padding: 8px 14px; border-radius: 8px; background: var(--surface); white-space: nowrap; cursor: pointer; font-size: 14px;
-    }
-    .tab.active { background: var(--text); color: #000; font-weight: 600; }
-
     /* Trình phát */
-    .player-wrapper {
-      margin-bottom: 30px; display: none;
+    .player-section { margin-bottom: 30px; display: none; }
+    .player-section.show { display: block; }
+    .player-wrap {
+      position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;
+      border-radius: 12px; background: #000;
     }
-    .player-wrapper.visible { display: block; }
-    .player-container {
-      position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 12px; background: #000;
-    }
-    .player-container iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
-    .player-controls {
-      display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px;
-    }
+    .player-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    .player-info { margin-top: 12px; }
+    .player-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
+    .player-ctrls { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
     .ctrl-btn {
-      padding: 10px 16px; border-radius: 20px; background: var(--surface); color: var(--text); border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px;
+      padding: 10px 16px; border-radius: 20px; background: var(--surface); color: var(--text);
+      border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 6px;
     }
     .ctrl-btn:hover { background: var(--hover); }
     .ctrl-btn.active { background: var(--red); }
-    .status-line {
-      margin-top: 10px; padding: 8px 12px; border-radius: 8px; background: var(--surface); font-size: 13px; color: var(--text-secondary);
-      display: flex; align-items: center; gap: 8px;
+    .status-bar {
+      margin-top: 12px; padding: 10px 14px; border-radius: 8px; background: var(--surface);
+      font-size: 13px; color: var(--text-secondary);
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
     }
-    .status-dot {
-      width: 8px; height: 8px; border-radius: 50%; background: #888;
-    }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #888; }
     .status-dot.on { background: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,.2); }
 
-    /* Lưới video */
-    .video-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 32px 16px;
+    /* Danh mục */
+    .chips { display: flex; gap: 12px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
+    .chip {
+      padding: 8px 14px; border-radius: 8px; background: var(--surface); white-space: nowrap;
+      cursor: pointer; font-size: 14px;
     }
-    .video-card { cursor: pointer; }
+    .chip.active { background: var(--text); color: #000; font-weight: 600; }
+
+    /* Lưới video giống YouTube */
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 36px 16px; }
+    .video-card { cursor: pointer; transition: transform .2s; }
+    .video-card:hover { transform: scale(1.03); }
     .video-thumb {
-      width: 100%; aspect-ratio: 16/9; border-radius: 12px; object-fit: cover; background: #272727; margin-bottom: 10px;
+      width: 100%; aspect-ratio: 16/9; border-radius: 12px; object-fit: cover;
+      background: #272727; margin-bottom: 12px;
     }
-    .video-meta { display: flex; gap: 10px; }
-    .video-avatar {
+    .video-row { display: flex; gap: 10px; }
+    .video-avt {
       width: 36px; height: 36px; border-radius: 50%; background: #444; flex-shrink: 0; margin-top: 4px;
     }
-    .video-title {
-      font-size: 14px; line-height: 1.4; margin-bottom: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500;
+    .video-desc { flex: 1; }
+    .video-name {
+      font-size: 14px; line-height: 1.4; margin-bottom: 4px; display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500;
     }
     .video-channel { font-size: 13px; color: var(--text-secondary); }
 
     /* Yêu thích */
-    .fav-section { margin-top: 40px; }
-    .section-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .fav-section { margin-top: 40px; display: none; }
+    .fav-section.show { display: block; }
+    .section-head {
+      font-size: 20px; font-weight: 600; margin-bottom: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
     .fav-item {
-      display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--surface); border-radius: 10px; margin-bottom: 8px; cursor: pointer;
+      display: flex; align-items: center; gap: 12px; padding: 14px;
+      background: var(--surface); border-radius: 10px; margin-bottom: 8px; cursor: pointer;
     }
     .fav-item:hover { background: var(--hover); }
-    .fav-info { flex: 1; }
-    .fav-del { color: #ff453a; padding: 6px 10px; border: none; background: none; cursor: pointer; font-size: 16px; }
+    .fav-name { flex: 1; font-size: 14px; font-weight: 500; }
+    .fav-del { color: #ff453a; padding: 6px 10px; border: none; background: none; cursor: pointer; font-size: 18px; }
 
     /* Thông báo */
-    .note-box {
-      margin-top: 40px; padding: 16px; background: #1e3a5f; border-radius: 10px; font-size: 13px; line-height: 1.6; color: #ddd;
+    .note {
+      margin-top: 40px; padding: 18px; background: #1e3a5f; border-radius: 12px;
+      font-size: 13px; line-height: 1.7; color: #ddd;
     }
+    .note strong { color: #fff; }
     .hidden { display: none !important; }
     .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
-    .error { background: rgba(255,69,58,.15); padding: 12px; border-radius: 8px; margin: 10px 0; color: #ff999f; }
+    .err { background: rgba(255,69,58,.15); padding: 12px; border-radius: 8px; margin: 10px 0; color: #ff999f; }
 
     /* Responsive cho điện thoại & màn hình xe */
     @media (max-width: 900px) {
-      .sidebar { position: fixed; left: -100%; z-index: 99; background: var(--bg); border-right: 1px solid var(--border); transition: left .2s; }
-      .sidebar.open { left: 0; }
-      .video-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px 12px; }
+      .sidebar { transform: translateX(-100%); transition: transform .2s; }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; }
+      .video-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 24px 12px; }
     }
   </style>
 </head>
 <body>
-  <div class="app-layout">
-    <!-- Thanh trên cùng -->
-    <header class="top-bar">
-      <div class="logo">
-        <span class="logo-icon">▶</span>YouTube
+  <div class="app">
+    <!-- Thanh bên trái giống YouTube Desktop -->
+    <nav class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <span class="sidebar-logo-icon">▶</span>YouTube
+        <span class="mode-badge" style="margin-left:6px;">Desktop</span>
       </div>
-      <div class="search-bar">
-        <input type="text" class="search-input" id="searchInput" placeholder="Tìm kiếm hoặc dán link YouTube...">
-        <button class="search-btn" id="searchBtn" onclick="doSearch()">🔍</button>
+      
+      <div class="sidebar-item active" data-tab="home" onclick="switchTab('home')">
+        <span class="sidebar-icon">🏠</span><span>Trang chủ</span>
       </div>
-      <div class="top-actions">
-        <span class="action-icon" title="Lưu danh sách" onclick="saveCurrent()">⭐</span>
-        <span class="user-avatar" title="Đăng nhập Premium để không quảng cáo">V</span>
+      <div class="sidebar-item" data-tab="explore" onclick="switchTab('explore')">
+        <span class="sidebar-icon">🔥</span><span>Khám phá</span>
       </div>
-    </header>
+      <div class="sidebar-item" data-tab="music" onclick="switchTab('music')">
+        <span class="sidebar-icon">🎵</span><span>Âm nhạc</span>
+      </div>
+      <div class="sidebar-item" data-tab="fav" onclick="switchTab('fav')">
+        <span class="sidebar-icon">⭐</span><span>Đã lưu</span>
+      </div>
+      
+      <div class="sidebar-divider"></div>
+      
+      <div class="sidebar-title">Danh sách phát</div>
+      <div class="sidebar-item" onclick="openFullYt()">
+        <span class="sidebar-icon">🌐</span><span>Mở YouTube đầy đủ</span>
+      </div>
+      <div class="sidebar-item" onclick="switchTab('settings')">
+        <span class="sidebar-icon">⚙️</span><span>Cài đặt phát</span>
+      </div>
+      
+      <div class="sidebar-divider"></div>
+      
+      <div style="padding:0 12px; font-size:12px; color:var(--text-secondary); line-height:1.5; margin-top:8px;">
+        💡 Mở từ biểu tượng màn hình chính để phát ngầm
+      </div>
+    </nav>
 
-    <div class="main-wrapper">
-      <!-- Thanh bên -->
-      <aside class="sidebar" id="sidebar">
-        <div class="sidebar-item active" onclick="switchTab('home')">
-          <span class="sidebar-icon">🏠</span><span>Tất cả</span>
+    <!-- Nội dung chính -->
+    <main class="main">
+      <!-- Thanh trên cùng -->
+      <div class="top-bar">
+        <span class="action-icon" style="display:none;" id="menuBtn" onclick="toggleSidebar()">☰</span>
+        <div class="search-bar">
+          <input type="text" class="search-input" id="searchInput" placeholder="Tìm kiếm hoặc dán link YouTube...">
+          <button class="search-btn" onclick="doSearch()">🔍</button>
         </div>
-        <div class="sidebar-item" onclick="switchTab('music')">
-          <span class="sidebar-icon">🎵</span><span>Âm nhạc</span>
+        <div class="top-actions">
+          <span class="action-icon" title="Mở YouTube phiên bản đầy đủ" onclick="openFullYt()">🌐</span>
+          <span class="action-icon" title="Lưu video" onclick="saveCurrent()">⭐</span>
+          <div class="user-avatar" title="Đăng nhập YouTube Premium để không quảng cáo">V</div>
         </div>
-        <div class="sidebar-item" onclick="switchTab('fav')">
-          <span class="sidebar-icon">⭐</span><span>Đã lưu</span>
-        </div>
-        <div class="sidebar-item" onclick="switchTab('settings')">
-          <span class="sidebar-icon">⚙️</span><span>Cài đặt phát</span>
-        </div>
-      </aside>
+      </div>
 
-      <!-- Nội dung chính -->
-      <main class="content">
-        <!-- Trình phát -->
-        <div class="player-wrapper" id="playerWrapper">
-          <div class="player-container">
-            <iframe id="player" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
-          </div>
-          <div class="player-controls">
-            <button class="ctrl-btn" id="bgBtn" onclick="toggleBackground()">
-              <span id="bgIcon">🔇</span> <span id="bgText">Bật phát ngầm</span>
+      <!-- Trình phát -->
+      <div class="player-section" id="playerSection">
+        <div class="player-wrap">
+          <iframe id="player" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture; playsinline"></iframe>
+        </div>
+        <div class="player-info">
+          <div class="player-title" id="playerTitle">—</div>
+          <div class="player-ctrls">
+            <button class="ctrl-btn" id="bgBtn" onclick="toggleBg()">
+              <span id="bgIco">🔇</span> <span id="bgTxt">Bật phát ngầm</span>
             </button>
             <button class="ctrl-btn" onclick="togglePiP()">📺 Hình trong hình</button>
-            <button class="ctrl-btn" onclick="pauseVideo()">⏸ Tạm dừng</button>
-            <button class="ctrl-btn" onclick="resumeVideo()">▶ Tiếp tục</button>
+            <button class="ctrl-btn" onclick="pauseVid()">⏸ Tạm dừng</button>
+            <button class="ctrl-btn" onclick="resumeVid()">▶ Tiếp tục</button>
             <button class="ctrl-btn" onclick="saveCurrent()">⭐ Lưu</button>
           </div>
-          <div class="status-line">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">Sẵn sàng — Phát ngầm tiếp tục chạy khi chuyển ứng dụng</span>
+          <div class="status-bar">
+            <span class="status-dot" id="statDot"></span>
+            <span id="statTxt">✅ Chế độ Desktop — Phát ngầm tối ưu cho CarPlay</span>
           </div>
         </div>
+      </div>
 
-        <!-- Tab danh mục -->
-        <div class="category-tabs" id="categoryTabs">
-          <div class="tab active" data-cat="all" onclick="setCategory(this)">Tất cả</div>
-          <div class="tab" data-cat="music" onclick="setCategory(this)">Âm nhạc</div>
-          <div class="tab" data-cat="game" onclick="setCategory(this)">Trò chơi</div>
-          <div class="tab" data-cat="playlist" onclick="setCategory(this)">Danh sách kết hợp</div>
-          <div class="tab" data-cat="live" onclick="setCategory(this)">Trực tiếp</div>
-          <div class="tab" data-cat="movie" onclick="setCategory(this)">Hoạt hình</div>
-          <div class="tab" data-cat="nature" onclick="setCategory(this)">Thiên nhiên</div>
-          <div class="tab" data-cat="travel" onclick="setCategory(this)">Du lịch</div>
+      <!-- Thanh danh mục -->
+      <div class="chips" id="chipsRow">
+        <div class="chip active" data-cat="all" onclick="setCat(this)">Tất cả</div>
+        <div class="chip" data-cat="music" onclick="setCat(this)">Âm nhạc</div>
+        <div class="chip" data-cat="trending" onclick="setCat(this)">Xu hướng</div>
+        <div class="chip" data-cat="game" onclick="setCat(this)">Trò chơi</div>
+        <div class="chip" data-cat="news" onclick="setCat(this)">Tin tức</div>
+        <div class="chip" data-cat="sport" onclick="setCat(this)">Thể thao</div>
+      </div>
+
+      <!-- Lưới video -->
+      <div id="contentArea">
+        <div class="video-grid" id="videoGrid"></div>
+        <div class="loading" id="loadingArea">Đang tải...</div>
+        <div style="text-align:center;margin-top:24px;" id="moreArea" class="hidden">
+          <button class="ctrl-btn" onclick="loadMore()">Tải thêm</button>
         </div>
+      </div>
 
-        <!-- Lưới video -->
-        <div id="resultsArea">
-          <div class="video-grid" id="videoGrid"></div>
-          <div class="loading hidden" id="loadingArea">Đang tải...</div>
-          <div style="text-align:center;margin-top:20px;" id="loadMoreArea" class="hidden">
-            <button class="ctrl-btn" onclick="loadMoreResults()">Tải thêm</button>
-          </div>
+      <!-- Yêu thích -->
+      <div class="fav-section" id="favSection">
+        <div class="section-head">
+          <span>⭐ Danh sách đã lưu</span>
+          <button class="ctrl-btn" style="font-size:13px;padding:6px 12px;" onclick="clearFav()">Xóa hết</button>
         </div>
+        <div id="favList"></div>
+      </div>
 
-        <!-- Danh sách yêu thích -->
-        <div class="fav-section hidden" id="favSection">
-          <div class="section-title">
-            <span>⭐ Danh sách đã lưu</span>
-            <button class="ctrl-btn" style="font-size:13px;padding:6px 12px;" onclick="clearAllFav()">Xóa hết</button>
-          </div>
-          <div id="favList"></div>
-        </div>
-
-        <!-- Cài đặt -->
-        <div class="hidden" id="settingsSection">
-          <div class="section-title">⚙️ Cài đặt phát ngầm</div>
-          <div style="background:var(--surface);border-radius:10px;padding:20px;line-height:2;">
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-              <input type="checkbox" id="autoBg" checked> Tự động bật phát ngầm khi phát video
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
-              <input type="checkbox" id="keepScreenOn"> Giữ màn hình không tắt
-            </label>
-            <p style="margin-top:12px;font-size:13px;color:var(--text-secondary);">
-              💡 Để phát tiếp khi tắt màn hình/đổi ứng dụng: mở trang từ biểu tượng màn hình chính iPhone + bật Hình trong hình
+      <!-- Cài đặt -->
+      <div class="hidden" id="settSection">
+        <div class="section-head">⚙️ Cài đặt phát</div>
+        <div style="background:var(--surface);border-radius:10px;padding:24px;line-height:2;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="autoBg" checked> Tự động bật phát ngầm khi phát video
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="noCookie" checked> Dùng máy chủ youtube-nocookie (nhanh & ổn định)
+          </label>
+          <div style="margin-top:16px;padding:12px;background:#2c2c2e;border-radius:8px;font-size:13px;line-height:1.8;">
+            <strong>🌐 Mở YouTube đầy đủ:</strong><br>
+            <a href="https://www.youtube.com/?app=desktop&persist_app=1" target="_blank" style="color:#3b82f6;">
+              youtube.com/?app=desktop&persist_app=1
+            </a>
+            <p style="margin-top:8px;color:var(--text-secondary);">
+              Link trên khóa giao diện máy tính vĩnh viễn — không tự đổi về di động
             </p>
           </div>
+          <div style="margin-top:16px;padding:12px;background:#2c2c2e;border-radius:8px;font-size:13px;line-height:1.8;">
+            <strong>📱 Bật trên Safari iPhone:</strong><br>
+            1. Mở trang → nhấn <code>aA</code> trên thanh địa chỉ<br>
+            2. Chọn <strong>"Yêu cầu trang máy tính"</strong><br>
+            3. Chia sẻ → <strong>Thêm vào Màn hình Chính</strong> ⭐ Quan trọng nhất
+          </div>
         </div>
+      </div>
 
-        <!-- Lưu ý -->
-        <div class="note-box">
-          <strong>📌 Cách dùng trên CarPlay & Phát ngầm:</strong>
-          <ul style="margin:8px 0 0 20px;">
-           <li>🚦 Chỉ xem khi xe dừng hẳn! Tập trung lái xe khi di chuyển</li>
-          </ul>
-        </div>
-      </main>
-    </div>
+      <!-- Lưu ý quan trọng -->
+      <div class="note">
+        <strong>📌 Cách dùng trên CarPlay & Phát ngầm:</strong>
+        <ul style="margin:10px 0 0 20px;">
+          <li>✅ Mở từ biểu tượng <strong>Màn hình Chính</strong> → phát ngầm hoạt động tốt nhất</li>
+          <li>✅ Nhấn <strong>"Bật phát ngầm"</strong> trước khi chuyển ứng dụng → vẫn nghe được</li>
+          <li>✅ Đăng nhập <strong>YouTube Premium</strong> trên Safari → tự động không quảng cáo</li>
+          <li>✅ Nút 🌐 → mở YouTube đầy đủ giao diện máy tính với tham số khóa</li>
+          <li>🚦 Chỉ xem khi xe dừng hẳn! Tập trung lái xe khi di chuyển</li>
+        </ul>
+      </div>
+    </main>
   </div>
 
   <script>
@@ -257,47 +311,53 @@
     const YOUTUBE_API_KEY = 'AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0';
     // 👆 Thay đúng dãy ký tự khóa của bạn vào giữa dấu nháy 👆
 
-    let currentVideoId = null;
-    let currentTitle = '';
-    let backgroundEnabled = false;
-    let nextPageToken = '';
-    let lastSearchQuery = '';
-    let activeCategory = 'all';
+    let currentVidId = null, currentVidTitle = '';
+    let bgOn = false, nextPage = '', lastQuery = '';
+    let activeCat = 'all', activeTab = 'home';
 
-    const playerIframe = document.getElementById('player');
-    const playerWrapper = document.getElementById('playerWrapper');
-    const statusText = document.getElementById('statusText');
-    const statusDot = document.getElementById('statusDot');
+    const player = document.getElementById('player');
+    const playerSection = document.getElementById('playerSection');
+    const playerTitle = document.getElementById('playerTitle');
+    const statDot = document.getElementById('statDot');
+    const statTxt = document.getElementById('statTxt');
     const searchInput = document.getElementById('searchInput');
     const videoGrid = document.getElementById('videoGrid');
     const loadingArea = document.getElementById('loadingArea');
-    const loadMoreArea = document.getElementById('loadMoreArea');
+    const moreArea = document.getElementById('moreArea');
     const favSection = document.getElementById('favSection');
-    const settingsSection = document.getElementById('settingsSection');
+    const settSection = document.getElementById('settSection');
+    const chipsRow = document.getElementById('chipsRow');
     const bgBtn = document.getElementById('bgBtn');
-    const bgIcon = document.getElementById('bgIcon');
-    const bgText = document.getElementById('bgText');
+    const bgIco = document.getElementById('bgIco');
+    const bgTxt = document.getElementById('bgTxt');
+    const contentArea = document.getElementById('contentArea');
+
+    // === Mở YouTube đầy đủ với tham số khóa Desktop ===
+    function openFullYt() {
+      window.open('https://www.youtube.com/?app=desktop&persist_app=1', '_blank');
+    }
 
     // === Chuyển tab bên trái ===
     function switchTab(tab) {
       document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
-      event.target.closest('.sidebar-item').classList.add('active');
+      document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
+      activeTab = tab;
       
       favSection.classList.toggle('hidden', tab !== 'fav');
-      settingsSection.classList.toggle('hidden', tab !== 'settings');
-      document.getElementById('categoryTabs').classList.toggle('hidden', tab === 'fav' || tab === 'settings');
-      document.getElementById('resultsArea').classList.toggle('hidden', tab === 'fav' || tab === 'settings');
+      settSection.classList.toggle('hidden', tab !== 'settings');
+      chipsRow.classList.toggle('hidden', tab === 'fav' || tab === 'settings');
+      contentArea.classList.toggle('hidden', tab === 'fav' || tab === 'settings');
       
-      if (tab === 'fav') loadFavorites();
-      if (tab === 'home') loadDefaultVideos();
+      if (tab === 'fav') loadFavList();
+      if (tab === 'home' || tab === 'explore' || tab === 'music') loadVideos();
     }
 
-    // === Chọn danh mục trên cùng ===
-    function setCategory(el) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    // === Chọn danh mục ===
+    function setCat(el) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       el.classList.add('active');
-      activeCategory = el.dataset.cat;
-      loadDefaultVideos();
+      activeCat = el.dataset.cat;
+      loadVideos();
     }
 
     // === Tìm kiếm / Phát trực tiếp ===
@@ -306,70 +366,73 @@
       if (!val) return;
 
       // Phát ngay nếu là link/mã video
-      const urlMatch = val.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-      if (urlMatch) return playById(urlMatch[1], val);
-      if (val.length === 11) return playById(val, `Video ${val}`);
+      const m = val.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      if (m) return play(m[1], val);
+      if (val.length === 11) return play(val, `Video ${val}`);
 
       // Tìm danh sách
       if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0') {
         return alert('⚠️ Chưa điền khóa API! Mở mã → điền khóa vào dòng được hướng dẫn');
       }
 
-      lastSearchQuery = val;
-      nextPageToken = '';
+      lastQuery = val;
+      nextPage = '';
       videoGrid.innerHTML = '';
       loadingArea.classList.remove('hidden');
-      loadMoreArea.classList.add('hidden');
-      
-      await fetchResults();
+      moreArea.classList.add('hidden');
+      await fetchVideos();
       loadingArea.classList.add('hidden');
     }
 
-    // === Tải video mặc định theo danh mục ===
-    async function loadDefaultVideos() {
+    // === Tải video theo danh mục ===
+    async function loadVideos() {
       if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0') {
         videoGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary);">
           <p>Điền khóa API YouTube vào mã để xem danh sách video</p>
-          <p style="margin-top:8px;font-size:13px;">Hoặc dán link YouTube vào ô tìm kiếm để phát ngay</p>
+          <p style="margin-top:12px;">Hoặc dán link YouTube vào ô tìm kiếm để phát ngay</p>
+          <p style="margin-top:12px;">
+            <a href="https://www.youtube.com/?app=desktop&persist_app=1" target="_blank" style="color:#3b82f6;">
+              🌐 Mở YouTube phiên bản đầy đủ → youtube.com/?app=desktop&persist_app=1
+            </a>
+          </p>
         </div>`;
         return;
       }
 
-      const catMap = {
-        all: '', music: 'âm nhạc', game: 'trò chơi', playlist: 'danh sách kết hợp',
-        live: 'trực tiếp', movie: 'hoạt hình', nature: 'thiên nhiên', travel: 'du lịch'
+      const map = {
+        all: '', music: 'âm nhạc', trending: 'xu hướng',
+        game: 'trò chơi', news: 'tin tức', sport: 'thể thao'
       };
-      lastSearchQuery = catMap[activeCategory] || '';
-      nextPageToken = '';
+      lastQuery = map[activeCat] || '';
+      nextPage = '';
       videoGrid.innerHTML = '';
       loadingArea.classList.remove('hidden');
-      
-      await fetchResults();
+      await fetchVideos();
       loadingArea.classList.add('hidden');
     }
 
-    // === Gọi API lấy kết quả ===
-    async function fetchResults() {
+    // === Gọi API lấy danh sách ===
+    async function fetchVideos() {
       try {
-        let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(lastSearchQuery)}&type=video&maxResults=12&key=${YOUTUBE_API_KEY}`;
-        if (nextPageToken) url += `&pageToken=${nextPageToken}`;
+        let url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(lastQuery)}&type=video&maxResults=12&key=${YOUTUBE_API_KEY}`;
+        if (nextPage) url += `&pageToken=${nextPage}`;
 
         const res = await fetch(url);
         const data = await res.json();
 
         if (data.error) {
-          videoGrid.innerHTML = `<div class="error" style="grid-column:1/-1;">❌ Lỗi: ${data.error.message}</div>`;
-          loadMoreArea.classList.add('hidden');
+          videoGrid.innerHTML = `<div class="err" style="grid-column:1/-1;">❌ Lỗi: ${data.error.message}</div>`;
+          moreArea.classList.add('hidden');
           return;
         }
         if (!data.items?.length) {
-          videoGrid.innerHTML += `<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text-secondary);">Không có kết quả</div>`;
-          loadMoreArea.classList.add('hidden');
+          videoGrid.innerHTML += `<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-secondary);">Không có kết quả</div>`;
+          moreArea.classList.add('hidden');
           return;
         }
 
         data.items.forEach(item => {
-          const v = item.id.videoId;
+          const id = item.id.videoId;
           const s = item.snippet;
           const title = s.title.replace(/&quot;/g,'"').replace(/&amp;/g,'&');
           const ch = s.channelTitle;
@@ -379,124 +442,110 @@
           card.className = 'video-card';
           card.innerHTML = `
             <img src="${thumb}" alt="${title}" class="video-thumb" loading="lazy">
-            <div class="video-meta">
-              <div class="video-avatar"></div>
-              <div>
-                <div class="video-title">${title}</div>
+            <div class="video-row">
+              <div class="video-avt"></div>
+              <div class="video-desc">
+                <div class="video-name">${title}</div>
                 <div class="video-channel">${ch}</div>
               </div>
             </div>`;
-          card.onclick = () => playById(v, title);
+          card.onclick = () => play(id, title);
           videoGrid.appendChild(card);
         });
 
-        nextPageToken = data.nextPageToken || '';
-        loadMoreArea.classList.toggle('hidden', !nextPageToken);
-        statusText.textContent = `Tìm thấy ${data.items.length} video`;
+        nextPage = data.nextPageToken || '';
+        moreArea.classList.toggle('hidden', !nextPage);
+        statTxt.textContent = `✅ Chế độ Desktop — Tìm thấy ${data.items.length} video`;
       } catch (err) {
-        videoGrid.innerHTML += `<div class="error" style="grid-column:1/-1;">❌ Lỗi kết nối: ${err.message}</div>`;
+        videoGrid.innerHTML += `<div class="err" style="grid-column:1/-1;">❌ Lỗi kết nối: ${err.message}</div>`;
       }
     }
 
-    async function loadMoreResults() {
-      loadMoreArea.querySelector('button').textContent = 'Đang tải...';
-      await fetchResults();
-      loadMoreArea.querySelector('button').textContent = 'Tải thêm';
+    async function loadMore() {
+      moreArea.querySelector('button').textContent = 'Đang tải...';
+      await fetchVideos();
+      moreArea.querySelector('button').textContent = 'Tải thêm';
     }
 
     // === PHÁT VIDEO ===
-    function playById(id, title='') {
-      currentVideoId = id;
-      currentTitle = title || `Video ${id}`;
+    function play(id, title='') {
+      currentVidId = id;
+      currentVidTitle = title || `Video ${id}`;
+      playerTitle.textContent = currentVidTitle;
       
-      playerIframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
-      playerWrapper.classList.add('visible');
-      statusText.textContent = `▶ Đang phát: ${currentTitle}`;
-      statusDot.classList.add('on');
+      const useNoCookie = document.getElementById('noCookie')?.checked !== false;
+      const domain = useNoCookie ? 'https://www.youtube-nocookie.com' : 'https://www.youtube.com';
       
-      // Tự bật phát ngầm nếu chọn
-      if (document.getElementById('autoBg')?.checked && !backgroundEnabled) {
-        toggleBackground();
-      }
+      player.src = `${domain}/embed/${id}?autoplay=1&rel=0&enablejsapi=1&playsinline=1`;
+      playerSection.classList.add('show');
+      statTxt.textContent = `▶ Đang phát: ${currentVidTitle}`;
+      statDot.classList.add('on');
+      
+      // Tự bật phát ngầm
+      if (document.getElementById('autoBg')?.checked && !bgOn) toggleBg();
       
       window.scrollTo({ top: 0, behavior: 'smooth' });
       searchInput.value = '';
     }
 
-    // === PHÁT NGẦM / NỀN — TỐI ƯU ===
-    function toggleBackground() {
-      backgroundEnabled = !backgroundEnabled;
+    // === PHÁT NGẦM — TỐI ƯU CARPLAY ===
+    function toggleBg() {
+      bgOn = !bgOn;
+      bgBtn.classList.toggle('active', bgOn);
+      bgIco.textContent = bgOn ? '🔊' : '🔇';
+      bgTxt.textContent = bgOn ? 'Đang phát ngầm' : 'Bật phát ngầm';
+      statDot.classList.toggle('on', bgOn);
       
-      bgBtn.classList.toggle('active', backgroundEnabled);
-      bgIcon.textContent = backgroundEnabled ? '🔊' : '🔇';
-      bgText.textContent = backgroundEnabled ? 'Đang phát ngầm' : 'Bật phát ngầm';
-      statusDot.classList.toggle('on', backgroundEnabled);
-      
-      if (backgroundEnabled) {
-        // Giữ kết nối khi ẩn trang
-        document.addEventListener('visibilitychange', keepAlive);
-        statusText.textContent = '✅ Đã bật — chuyển ứng dụng vẫn tiếp tục phát';
-        // Yêu cầu PiP ngay nếu có thể
-        if (document.pictureInPictureEnabled) {
-          playerIframe.focus();
-        }
+      if (bgOn) {
+        document.addEventListener('visibilitychange', keepAwake);
+        statTxt.textContent = '✅ Đã bật — chuyển ứng dụng vẫn tiếp tục phát';
+        if (document.pictureInPictureEnabled) player.focus();
       } else {
-        document.removeEventListener('visibilitychange', keepAlive);
-        statusText.textContent = 'Đã tắt phát ngầm';
+        document.removeEventListener('visibilitychange', keepAwake);
+        statTxt.textContent = 'Đã tắt phát ngầm';
       }
     }
 
-    function keepAlive() {
-      if (!backgroundEnabled || !currentVideoId) return;
-      // Giữ iframe không bị tắt khi trang bị ẩn
+    function keepAwake() {
+      if (!bgOn || !currentVidId) return;
       if (document.hidden) {
-        playerIframe.focus();
-        // Kích hoạt PiP tự động nếu hỗ trợ
+        player.focus();
         if (document.pictureInPictureEnabled && !document.pictureInPictureElement) {
-          try {
-            // Trình phát YouTube sẽ tự hiển thị PiP nếu được phép
-          } catch (e) {}
+          try { /* PiP tự động kích hoạt nếu được phép */ } catch (e) {}
         }
       }
     }
 
     // === Hình trong hình ===
     function togglePiP() {
-      if (!document.pictureInPictureEnabled) {
-        alert('Thiết bị không hỗ trợ Hình trong hình');
-        return;
-      }
+      if (!document.pictureInPictureEnabled) return alert('Không hỗ trợ Hình trong hình');
       if (document.pictureInPictureElement) {
         document.exitPictureInPicture();
-        statusText.textContent = 'Đã tắt PiP';
+        statTxt.textContent = 'Đã tắt PiP';
       } else {
-        playerIframe.focus();
-        statusText.textContent = '📺 PiP đang hoạt động';
+        player.focus();
+        statTxt.textContent = '📺 PiP đang hoạt động — xem khi dùng ứng dụng khác';
       }
     }
 
     // === Điều khiển phát ===
-    function pauseVideo() {
-      if (!playerIframe.src) return;
-      playerIframe.contentWindow.postMessage(
-        '{"event":"command","func":"pauseVideo","args":""}', '*'
-      );
-      statusText.textContent = '⏸ Đã tạm dừng';
+    function pauseVid() {
+      if (!player.src) return;
+      player.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+      statTxt.textContent = '⏸ Đã tạm dừng';
     }
-    function resumeVideo() {
-      if (!playerIframe.src) return;
-      playerIframe.contentWindow.postMessage(
-        '{"event":"command","func":"playVideo","args":""}', '*'
-      );
-      statusText.textContent = '▶ Tiếp tục phát';
+    function resumeVid() {
+      if (!player.src) return;
+      player.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+      statTxt.textContent = '▶ Tiếp tục phát';
     }
 
     // === Yêu thích ===
     function saveCurrent() {
-      if (!currentVideoId) return alert('Chưa có video nào đang phát!');
+      if (!currentVidId) return alert('Chưa có video nào!');
       const list = JSON.parse(localStorage.getItem('ytCarFav') || '[]');
-      if (list.some(i => i.id === currentVideoId)) return alert('Đã có trong danh sách!');
-      list.unshift({ id: currentVideoId, title: currentTitle });
+      if (list.some(i => i.id === currentVidId)) return alert('Đã có trong danh sách!');
+      list.unshift({ id: currentVidId, title: currentVidTitle });
       localStorage.setItem('ytCarFav', JSON.stringify(list));
       alert('✅ Đã lưu! Xem tại tab ⭐ Đã lưu');
     }
@@ -504,15 +553,15 @@
       let list = JSON.parse(localStorage.getItem('ytCarFav') || '[]');
       list = list.filter(i => i.id !== id);
       localStorage.setItem('ytCarFav', JSON.stringify(list));
-      loadFavorites();
+      loadFavList();
     }
-    function clearAllFav() {
-      if (confirm('Xóa toàn bộ danh sách đã lưu?')) {
+    function clearFav() {
+      if (confirm('Xóa toàn bộ danh sách?')) {
         localStorage.removeItem('ytCarFav');
-        loadFavorites();
+        loadFavList();
       }
     }
-    function loadFavorites() {
+    function loadFavList() {
       const list = JSON.parse(localStorage.getItem('ytCarFav') || '[]');
       const container = document.getElementById('favList');
       container.innerHTML = '';
@@ -524,20 +573,25 @@
         const div = document.createElement('div');
         div.className = 'fav-item';
         div.innerHTML = `
-          <div class="fav-info">
-            <div style="font-weight:500;font-size:14px;">${item.title}</div>
-            <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${item.id}</div>
-          </div>
-          <button class="ctrl-btn" style="padding:6px 12px;font-size:13px;" onclick="playById('${item.id}','${item.title.replace(/'/g,"\\'")}')">Phát</button>
+          <span class="fav-name" title="${item.title}">${item.title}</span>
+          <button class="ctrl-btn" style="padding:6px 12px;font-size:13px;" onclick="play('${item.id}','${item.title.replace(/'/g,"\\'")}')">Phát</button>
           <button class="fav-del" onclick="delFav('${item.id}')">✕</button>
         `;
         container.appendChild(div);
       });
     }
 
+    // === Thanh bên trên di động ===
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+    if (window.innerWidth < 900) {
+      document.getElementById('menuBtn').style.display = 'block';
+    }
+
     // === Khởi tạo ===
     searchInput.addEventListener('keypress', e => e.key === 'Enter' && doSearch());
-    loadDefaultVideos();
+    loadVideos();
   </script>
 </body>
 </html>

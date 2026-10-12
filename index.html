@@ -245,10 +245,7 @@
         <div class="note-box">
           <strong>📌 Cách dùng trên CarPlay & Phát ngầm:</strong>
           <ul style="margin:8px 0 0 20px;">
-            <li>✅ Mở trang trên Safari iPhone → Chia sẻ → <strong>Thêm vào Màn hình Chính</strong> để phát ngầm tốt nhất</li>
-            <li>✅ Nhấn <strong>"Bật phát ngầm"</strong> trước khi chuyển ứng dụng → vẫn nghe/xem được</li>
-            <li>✅ Đăng nhập <strong>YouTube Premium</strong> trên Safari → tự động không quảng cáo</li>
-            <li>🚦 Chỉ xem khi xe dừng hẳn! Tập trung lái xe khi di chuyển</li>
+           <li>🚦 Chỉ xem khi xe dừng hẳn! Tập trung lái xe khi di chuyển</li>
           </ul>
         </div>
       </main>
@@ -257,7 +254,7 @@
 
   <script>
     // 👇 Dán khóa API YouTube của bạn vào đây 👇
-    const YOUTUBE_API_KEY = 'ĐIỀN_KHÓA_API_CỦA_BẠN_VÀY';
+    const YOUTUBE_API_KEY = 'AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0';
     // 👆 Thay đúng dãy ký tự khóa của bạn vào giữa dấu nháy 👆
 
     let currentVideoId = null;
@@ -330,7 +327,7 @@
 
     // === Tải video mặc định theo danh mục ===
     async function loadDefaultVideos() {
-      if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'ĐIỀN_KHÓA_API_CỦA_BẠN_VÀY') {
+      if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === 'AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0') {
         videoGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary);">
           <p>Điền khóa API YouTube vào mã để xem danh sách video</p>
           <p style="margin-top:8px;font-size:13px;">Hoặc dán link YouTube vào ô tìm kiếm để phát ngay</p>

@@ -2,10 +2,11 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MusicPlay">
+    <meta name="format-detection" content="telephone=no">
     <title>MusicPlay - Nghe Nhạc</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
@@ -21,7 +22,12 @@
                         lightText: '#F1F1F1',
                         grayText: '#AAAAAA'
                     },
-                    fontFamily: { sans: ['Roboto', 'Arial', 'sans-serif'] }
+                    fontFamily: { sans: ['Roboto', 'Arial', 'sans-serif'] },
+                    screens: {
+                        'car': '800px',
+                        'ipad': '1024px',
+                        'wide': '1440px'
+                    }
                 }
             }
         }
@@ -31,10 +37,15 @@
             -webkit-tap-highlight-color: transparent; 
             box-sizing: border-box;
         }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
         input, textarea {
             pointer-events: auto !important;
             user-select: text !important;
             -webkit-user-select: text !important;
+            font-size: 16px !important; /* Ngăn tự phóng to màn hình trên iOS */
         }
         .progress-bar { 
             -webkit-appearance: none; 
@@ -47,8 +58,8 @@
         }
         .progress-bar::-webkit-slider-thumb { 
             -webkit-appearance: none; 
-            width: 16px; 
-            height: 16px; 
+            width: 18px; 
+            height: 18px; 
             border-radius: 50%; 
             background: #fff; 
             cursor: pointer; 
@@ -64,7 +75,6 @@
         .playing-animation span:nth-child(2) { animation-delay: 0.15s; }
         .playing-animation span:nth-child(3) { animation-delay: 0.3s; }
         @keyframes playing { from { height: 6px; } to { height: 18px; } }
-        /* Khung trình phát - hiển thị bình thường, không ẩn hoàn toàn nữa */
         #youtube-player { 
             width: 100%; 
             aspect-ratio: 16/9;
@@ -73,134 +83,142 @@
             background: #000;
         }
         .card-hover:hover { transform: scale(1.03); transition: transform 0.2s ease; }
-        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
-        .sidebar-link.active { background-color: rgba(255,255,255,0.15); font-weight: 500; }
-        @media (min-width: 1920px) { .video-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-        @media (min-width: 2560px) { .video-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+        .sidebar-link { transition: all 0.2s ease; }
+        .sidebar-link:hover, .sidebar-link.active { background-color: rgba(255,255,255,0.1); }
+        /* Ẩn thanh cuộn nhưng vẫn cuộn được */
+        .hide-scrollbar::-webkit-scrollbar { width: 4px; }
+        .hide-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+        /* Tối ưu cho màn hình xe */
+        @media (min-width: 1200px) and (max-height: 900px) {
+            .player-container { max-height: 70vh; }
+            .sidebar-link { padding: 10px 12px !important; }
+        }
+        /* Nút bấm lớn hơn trên màn hình xe */
+        @media (min-width: 800px) {
+            .btn-large { min-height: 44px; min-width: 44px; }
+        }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-dark text-lightText font-sans antialiased overflow-x-hidden">
-    <!-- Header Cố định -->
-    <header class="fixed top-0 left-0 right-0 bg-dark z-50 px-4 md:px-6 py-3 flex items-center justify-between border-b border-gray-800/50">
-        <div class="flex items-center gap-4">
-            <button id="sidebarToggle" class="p-2 hover:bg-darkGray rounded-full transition">
-                <i class="fa fa-bars"></i>
+<body class="bg-dark text-lightText font-sans antialiased h-screen flex flex-col">
+    <!-- Header Cố định - Tối ưu mọi màn hình -->
+    <header class="shrink-0 bg-dark z-50 px-3 sm:px-4 ipad:px-6 py-2 sm:py-3 flex items-center justify-between border-b border-gray-800/50">
+        <div class="flex items-center gap-2 sm:gap-4">
+            <button id="sidebarToggle" class="p-2 sm:p-3 hover:bg-darkGray rounded-full transition btn-large">
+                <i class="fa fa-bars text-base sm:text-lg"></i>
             </button>
             <a href="#" id="logoLink" class="flex items-center gap-1.5">
-                <div class="bg-red rounded-full w-8 h-8 flex items-center justify-center">
+                <div class="bg-red rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center">
                     <i class="fa fa-play text-white text-xs ml-0.5"></i>
                 </div>
-                <span class="font-bold text-xl hidden sm:inline">MusicPlay</span>
+                <span class="font-bold text-lg sm:text-xl hidden sm:inline">MusicPlay</span>
             </a>
         </div>
 
-        <div class="flex-1 max-w-[640px] mx-4 relative z-10">
+        <div class="flex-1 max-w-[480px] car:max-w-[640px] mx-2 sm:mx-4 relative z-10">
             <div class="relative flex">
-                <input type="text" id="searchInput" placeholder="Tìm kiếm bài hát, nghệ sĩ..." 
-                    class="w-full px-5 py-2.5 bg-darkGray border border-gray-700 rounded-l-full focus:outline-none focus:border-red text-base"
-                    autocomplete="off"
-                    autocorrect="off"
-                    autocapitalize="off"
-                    spellcheck="false">
-                <button id="searchBtn" class="px-6 bg-hoverGray border border-l-0 border-gray-700 rounded-r-full hover:bg-gray-600 transition">
-                    <i class="fa fa-search text-lg"></i>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm bài hát..." 
+                    class="w-full px-3 sm:px-5 py-2 bg-darkGray border border-gray-700 rounded-l-full focus:outline-none focus:border-red text-sm sm:text-base"
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <button id="searchBtn" class="px-3 sm:px-6 bg-hoverGray border border-l-0 border-gray-700 rounded-r-full hover:bg-gray-600 transition btn-large">
+                    <i class="fa fa-search text-base sm:text-lg"></i>
                 </button>
             </div>
         </div>
 
-        <div class="flex items-center gap-3">
-            <button id="favBtn" class="p-2.5 hover:bg-darkGray rounded-full transition" title="Yêu thích">
+        <div class="flex items-center gap-2 sm:gap-3">
+            <button id="favBtn" class="p-2 sm:p-3 hover:bg-darkGray rounded-full transition btn-large" title="Yêu thích">
                 <i class="fa fa-heart"></i>
             </button>
-            <div class="w-9 h-9 rounded-full bg-red flex items-center justify-center cursor-pointer">
-                <span class="font-bold">U</span>
+            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red flex items-center justify-center cursor-pointer shrink-0">
+                <span class="font-bold text-sm">U</span>
             </div>
         </div>
     </header>
 
     <!-- Bố cục chính -->
-    <div class="flex pt-16">
-        <!-- Thanh bên trái -->
-        <aside id="sidebar" class="w-60 fixed left-0 top-14 bottom-16 bg-dark overflow-y-auto transition-all duration-300 z-40">
-            <div class="p-2">
+    <div class="flex flex-1 overflow-hidden">
+        <!-- Thanh bên trái - Tự ẩn trên điện thoại, mở rộng trên iPad/xe -->
+        <aside id="sidebar" class="w-60 sm:w-56 ipad:w-60 fixed sm:relative left-0 top-0 bottom-0 bg-dark overflow-y-auto hide-scrollbar transition-all duration-300 z-40 -translate-x-full sm:translate-x-0">
+            <div class="p-2 pt-4">
                 <ul class="space-y-1">
-                    <li><a href="#" id="homeLink" class="sidebar-link active flex items-center gap-6 px-3 py-2.5 rounded-lg"><i class="fa fa-home w-5 text-center"></i><span>Trang chủ</span></a></li>
-                    <li><a href="#" id="favPageLink" class="sidebar-link flex items-center gap-6 px-3 py-2.5 rounded-lg"><i class="fa fa-heart w-5 text-center"></i><span>Yêu thích</span></a></li>
-                    <li><a href="#" id="queuePageLink" class="sidebar-link flex items-center gap-6 px-3 py-2.5 rounded-lg"><i class="fa fa-list w-5 text-center"></i><span>Danh sách phát</span></a></li>
+                    <li><a href="#" id="homeLink" class="sidebar-link active flex items-center gap-4 px-3 py-2.5 rounded-lg btn-large"><i class="fa fa-home w-5 text-center"></i><span>Trang chủ</span></a></li>
+                    <li><a href="#" id="favPageLink" class="sidebar-link flex items-center gap-4 px-3 py-2.5 rounded-lg btn-large"><i class="fa fa-heart w-5 text-center"></i><span>Yêu thích</span></a></li>
+                    <li><a href="#" id="queuePageLink" class="sidebar-link flex items-center gap-4 px-3 py-2.5 rounded-lg btn-large"><i class="fa fa-list w-5 text-center"></i><span>Danh sách phát</span></a></li>
                 </ul>
             </div>
         </aside>
 
-        <!-- Nội dung chính -->
-        <main id="mainContent" class="flex-1 ml-60 pb-20 transition-all duration-300">
-            <!-- Trang chủ - Lưới video giống YouTube -->
-            <section id="homePage" class="p-4 md:p-6">
-                <h2 id="pageTitle" class="text-xl font-bold mb-4">Tìm kiếm bài hát</h2>
-                <div id="videoGrid" class="video-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <!-- Lớp che khi mở menu trên điện thoại -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 z-30 hidden sm:hidden" onclick="toggleSidebar()"></div>
+
+        <!-- Nội dung chính - Tự điều chỉnh lưới theo màn hình -->
+        <main id="mainContent" class="flex-1 overflow-y-auto hide-scrollbar p-3 sm:p-4 ipad:p-6 pb-24">
+            <!-- Trang chủ - Lưới tự điều chỉnh -->
+            <section id="homePage">
+                <h2 id="pageTitle" class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Tìm kiếm bài hát</h2>
+                <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 car:grid-cols-3 ipad:grid-cols-4 wide:grid-cols-5 gap-3 sm:gap-4">
                     <p class="col-span-full text-grayText text-center py-12">Nhập từ khóa ở trên để tìm kiếm bài hát trên YouTube</p>
                 </div>
             </section>
 
-            <!-- Trang phát nhạc - Giống trang xem video YouTube -->
-            <section id="watchPage" class="hidden p-4 md:p-6">
-                <div class="flex flex-col lg:flex-row gap-6">
-                    <!-- Cột trái: Phát nhạc chính -->
-                    <div class="flex-1">
-                        <!-- Khung trình phát YouTube hiển thị bình thường -->
-                        <div id="youtube-player"></div>
+            <!-- Trang phát nhạc - Tối ưu bố cục ngang/dọc -->
+            <section id="watchPage" class="hidden">
+                <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
+                    <!-- Cột trái: Video + Điều khiển chính -->
+                    <div class="flex-1 player-container">
+                        <div id="youtube-player" class="mb-3 sm:mb-4"></div>
                         
-                        <!-- Thông tin bài hát -->
-                        <h1 id="watchTitle" class="text-xl md:text-2xl font-bold mt-4 mb-2 line-clamp-2">Tên bài hát</h1>
-                        <p id="watchChannel" class="text-grayText mb-4">Tên kênh / Nghệ sĩ</p>
+                        <h1 id="watchTitle" class="text-lg sm:text-xl ipad:text-2xl font-bold mb-2 line-clamp-2">Tên bài hát</h1>
+                        <p id="watchChannel" class="text-grayText mb-3 sm:mb-4 text-sm">Tên kênh / Nghệ sĩ</p>
                         
                         <!-- Thanh tiến độ -->
-                        <div class="mb-4">
+                        <div class="mb-3 sm:mb-4">
                             <input type="range" id="watchProgress" class="progress-bar" min="0" max="100" value="0">
-                            <div class="flex justify-between text-sm text-grayText mt-1">
+                            <div class="flex justify-between text-xs sm:text-sm text-grayText mt-1">
                                 <span id="watchCurrent">0:00</span>
                                 <span id="watchTotal">0:00</span>
                             </div>
                         </div>
                         
-                        <!-- Nút điều khiển chính -->
-                        <div class="flex items-center gap-4 md:gap-6 mb-6">
-                            <button id="watchShuffle" class="text-grayText hover:text-white transition">
+                        <!-- Nút điều khiển chính - Lớn, dễ chạm trên mọi thiết bị -->
+                        <div class="flex items-center justify-center gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
+                            <button id="watchShuffle" class="text-grayText hover:text-white transition btn-large p-2">
                                 <i class="fa fa-random fa-lg"></i>
                             </button>
-                            <button id="watchPrev" class="text-lightText hover:text-white transition text-xl">
+                            <button id="watchPrev" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2">
                                 <i class="fa fa-step-backward"></i>
                             </button>
-                            <button id="watchPlayPause" class="w-14 h-14 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg">
-                                <i class="fa fa-play ml-1 text-xl"></i>
+                            <button id="watchPlayPause" class="w-12 h-12 sm:w-14 sm:h-14 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg btn-large">
+                                <i class="fa fa-play ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>
                             </button>
-                            <button id="watchNext" class="text-lightText hover:text-white transition text-xl">
+                            <button id="watchNext" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2">
                                 <i class="fa fa-step-forward"></i>
                             </button>
-                            <button id="watchRepeat" class="text-grayText hover:text-white transition">
+                            <button id="watchRepeat" class="text-grayText hover:text-white transition btn-large p-2">
                                 <i class="fa fa-repeat fa-lg"></i>
                             </button>
                         </div>
                         
                         <!-- Nút hành động -->
-                        <div class="flex flex-wrap gap-3 mb-6">
-                            <button id="watchLike" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
+                        <div class="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
+                            <button id="watchLike" class="flex items-center gap-2 px-3 sm:px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition btn-large">
                                 <i class="fa fa-heart-o"></i>
-                                <span>Yêu thích</span>
+                                <span class="text-sm">Yêu thích</span>
                             </button>
-                            <button id="watchShare" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
+                            <button id="watchShare" class="flex items-center gap-2 px-3 sm:px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition btn-large">
                                 <i class="fa fa-share"></i>
-                                <span>Chia sẻ</span>
+                                <span class="text-sm">Chia sẻ</span>
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Cột phải: Danh sách phát liên quan -->
-                    <div class="w-full lg:w-[400px] xl:w-[450px]">
-                        <h3 class="font-bold mb-3">Danh sách phát</h3>
-                        <div id="relatedList" class="space-y-3 max-h-[70vh] overflow-y-auto">
+                    <!-- Cột phải: Danh sách phát - Luôn hiển thị trên màn rộng, cuộn riêng -->
+                    <div class="w-full lg:w-[360px] xl:w-[420px] shrink-0">
+                        <h3 class="font-bold mb-2 sm:mb-3">Danh sách phát</h3>
+                        <div id="relatedList" class="space-y-2 sm:space-y-3 max-h-[50vh] lg:max-h-[70vh] overflow-y-auto hide-scrollbar">
                             <p class="text-grayText text-sm py-4 text-center">Chưa có bài hát nào</p>
                         </div>
                     </div>
@@ -209,29 +227,29 @@
         </main>
     </div>
 
-    <!-- Thanh phát nhỏ dưới cùng - Luôn hiển thị khi đang phát -->
-    <div id="miniPlayer" class="fixed bottom-0 left-0 right-0 bg-darkGray border-t border-gray-700 px-4 py-3 z-50 transform translate-y-full transition-transform duration-300">
-        <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 flex-1 min-w-0">
-                <img id="miniThumb" src="" alt="" class="w-12 h-12 rounded-lg object-cover bg-gray-700">
+    <!-- Thanh phát nhỏ dưới cùng - Luôn hiển thị khi phát -->
+    <div id="miniPlayer" class="fixed bottom-0 left-0 right-0 bg-darkGray border-t border-gray-700 px-3 sm:px-4 py-2 sm:py-3 z-50 transform translate-y-full transition-transform duration-300">
+        <div class="flex items-center justify-between gap-2 sm:gap-3">
+            <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <img id="miniThumb" src="" alt="" class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover bg-gray-700 shrink-0">
                 <div class="min-w-0">
-                    <h4 id="miniTitle" class="font-medium truncate">Tên bài hát</h4>
-                    <p id="miniChannel" class="text-sm text-grayText truncate">Nghệ sĩ</p>
+                    <h4 id="miniTitle" class="font-medium truncate text-sm">Tên bài hát</h4>
+                    <p id="miniChannel" class="text-xs text-grayText truncate">Nghệ sĩ</p>
                 </div>
             </div>
 
-            <div class="flex items-center gap-4">
-                <button id="miniPrev" class="text-grayText hover:text-white transition text-lg"><i class="fa fa-step-backward"></i></button>
-                <button id="miniPlayPause" class="w-10 h-10 bg-red rounded-full flex items-center justify-center text-white">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button id="miniPrev" class="text-grayText hover:text-white transition btn-large p-1 sm:p-2"><i class="fa fa-step-backward"></i></button>
+                <button id="miniPlayPause" class="w-9 h-9 sm:w-10 sm:h-10 bg-red rounded-full flex items-center justify-center text-white btn-large">
                     <i class="fa fa-play ml-0.5"></i>
                 </button>
-                <button id="miniNext" class="text-grayText hover:text-white transition text-lg"><i class="fa fa-step-forward"></i></button>
+                <button id="miniNext" class="text-grayText hover:text-white transition btn-large p-1 sm:p-2"><i class="fa fa-step-forward"></i></button>
             </div>
 
-            <div class="hidden md:flex items-center gap-3 flex-1 justify-end">
-                <span id="miniTime" class="text-xs text-grayText">0:00 / 0:00</span>
-                <input type="range" id="miniProgress" class="progress-bar w-32" min="0" max="100" value="0">
-                <button id="miniExpand" class="text-grayText hover:text-white transition">
+            <div class="hidden sm:flex items-center gap-2 sm:gap-3 flex-1 justify-end">
+                <span id="miniTime" class="text-xs text-grayText whitespace-nowrap">0:00 / 0:00</span>
+                <input type="range" id="miniProgress" class="progress-bar w-20 md:w-32" min="0" max="100" value="0">
+                <button id="miniExpand" class="text-grayText hover:text-white transition btn-large p-1">
                     <i class="fa fa-chevron-up"></i>
                 </button>
             </div>
@@ -247,20 +265,15 @@
     </div>
 
     <script>
-        // ==================== CẤU HÌNH - ĐÃ ĐIỀN SẴN API CỦA BẠN ====================
+        // ==================== CẤU HÌNH ====================
         const YOUTUBE_API_KEY = "AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0";
-        
         const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
         const API_VIDEOS = "https://www.googleapis.com/youtube/v3/videos";
 
         // ==================== TRẠNG THÁI ====================
-        let player = null;
-        let isReady = false;
-        let playlist = [];
-        let currentIdx = -1;
-        let isShuffle = false;
-        let repeatMode = 0; // 0: tắt, 1: lặp danh sách, 2: lặp 1 bài
-        let isPlaying = false;
+        let player = null, isReady = false;
+        let playlist = [], currentIdx = -1;
+        let isShuffle = false, repeatMode = 0, isPlaying = false;
         let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
         let currentSearchResults = [];
 
@@ -272,17 +285,14 @@
             videoGrid: document.getElementById('videoGrid'),
             loadingOverlay: document.getElementById('loadingOverlay'),
             sidebar: document.getElementById('sidebar'),
-            mainContent: document.getElementById('mainContent'),
+            sidebarOverlay: document.getElementById('sidebarOverlay'),
             sidebarToggle: document.getElementById('sidebarToggle'),
             logoLink: document.getElementById('logoLink'),
             homeLink: document.getElementById('homeLink'),
             favPageLink: document.getElementById('favPageLink'),
-            queuePageLink: document.getElementById('queuePageLink'),
             favBtn: document.getElementById('favBtn'),
-            
             homePage: document.getElementById('homePage'),
             watchPage: document.getElementById('watchPage'),
-            
             watchTitle: document.getElementById('watchTitle'),
             watchChannel: document.getElementById('watchChannel'),
             watchProgress: document.getElementById('watchProgress'),
@@ -295,7 +305,6 @@
             watchRepeat: document.getElementById('watchRepeat'),
             watchLike: document.getElementById('watchLike'),
             relatedList: document.getElementById('relatedList'),
-            
             miniPlayer: document.getElementById('miniPlayer'),
             miniThumb: document.getElementById('miniThumb'),
             miniTitle: document.getElementById('miniTitle'),
@@ -308,7 +317,22 @@
             miniExpand: document.getElementById('miniExpand')
         };
 
-        // ==================== TẢI API YOUTUBE - TRÌNH PHÁT HIỂN THỊ BÌNH THƯỜNG ====================
+        // ==================== MENU THAN BÊN ====================
+        function toggleSidebar() {
+            const isOpen = el.sidebar.classList.contains('-translate-x-full');
+            el.sidebar.classList.toggle('-translate-x-full', !isOpen);
+            el.sidebarOverlay.classList.toggle('hidden', !isOpen);
+        }
+
+        // Tự đóng menu khi chọn trên điện thoại
+        function closeSidebarOnMobile() {
+            if (window.innerWidth < 640) {
+                el.sidebar.classList.add('-translate-x-full');
+                el.sidebarOverlay.classList.add('hidden');
+            }
+        }
+
+        // ==================== TẢI API YOUTUBE ====================
         function loadAPI() {
             const s = document.createElement('script');
             s.src = "https://www.youtube.com/iframe_api";
@@ -320,31 +344,18 @@
                 height: '360',
                 width: '640',
                 playerVars: { 
-                    autoplay: 0, 
-                    controls: 1,       // Hiển thị nút điều khiển YouTube
-                    enablejsapi: 1, 
-                    origin: location.origin,
-                    rel: 0,
-                    showinfo: 0,
-                    modestbranding: 1
+                    autoplay: 0, controls: 1, enablejsapi: 1,
+                    origin: location.origin, rel: 0, showinfo: 0, modestbranding: 1
                 },
                 events: {
-                    onReady: e => { 
-                        isReady = true; 
-                        e.target.setVolume(75); 
-                        console.log('✅ Trình phát YouTube đã sẵn sàng');
-                    },
+                    onReady: e => { isReady = true; e.target.setVolume(75); },
                     onStateChange: handleState,
-                    onError: (e) => {
-                        console.error('❌ Lỗi phát:', e.data);
-                        setTimeout(playNext, 1500);
-                    }
+                    onError: () => setTimeout(playNext, 1500)
                 }
             });
         };
 
         function handleState(e) {
-            console.log('📌 Trạng thái phát:', e.data);
             switch (e.data) {
                 case YT.PlayerState.PLAYING:
                     isPlaying = true;
@@ -364,7 +375,6 @@
         // ==================== TÌM KIẾM ====================
         async function search(q) {
             if (!q || q.trim() === '') return;
-            
             el.loadingOverlay.classList.remove('hidden');
             try {
                 const sRes = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q + ' nhạc')}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
@@ -375,23 +385,19 @@
                 const vRes = await fetch(`${API_VIDEOS}?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`);
                 const vData = await vRes.json();
 
-                currentSearchResults = sData.items.map(item => {
-                    const v = vData.items?.find(x => x.id === item.id.videoId);
-                    return {
-                        id: item.id.videoId,
-                        title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-                        channel: item.snippet.channelTitle,
-                        thumb: item.snippet.thumbnails.high.url,
-                        duration: formatDur(v?.contentDetails?.duration)
-                    };
-                });
+                currentSearchResults = sData.items.map(item => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                    channel: item.snippet.channelTitle,
+                    thumb: item.snippet.thumbnails.high.url,
+                    duration: formatDur(vData.items?.find(x => x.id === item.id.videoId)?.contentDetails?.duration)
+                }));
 
                 el.pageTitle.textContent = `Kết quả cho "${q}"`;
                 renderHomePage(currentSearchResults);
                 showPage('home');
             } catch (err) {
-                console.error('Lỗi tìm kiếm:', err);
-                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm: ${err.message}</p>`;
+                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
             } finally {
                 el.loadingOverlay.classList.add('hidden');
             }
@@ -407,8 +413,8 @@
                         <img src="${v.thumb}" alt="" class="w-full h-full object-cover">
                         <span class="absolute bottom-2 right-2 bg-black/80 text-xs px-1.5 py-0.5 rounded">${v.duration}</span>
                     </div>
-                    <h3 class="font-medium line-clamp-2">${v.title}</h3>
-                    <p class="text-sm text-grayText mt-1">${v.channel}</p>
+                    <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
+                    <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
                 `;
                 card.onclick = () => {
                     if (!playlist.some(x => x.id === v.id)) playlist.push(v);
@@ -422,9 +428,9 @@
         function showPage(page) {
             el.homePage.classList.toggle('hidden', page !== 'home');
             el.watchPage.classList.toggle('hidden', page !== 'watch');
-            
-            [el.homeLink, el.favPageLink, el.queuePageLink].forEach(link => link.classList.remove('active'));
+            [el.homeLink, el.favPageLink].forEach(link => link.classList.remove('active'));
             if (page === 'home') el.homeLink.classList.add('active');
+            closeSidebarOnMobile();
         }
 
         // ==================== PHÁT NHẠC ====================
@@ -433,13 +439,8 @@
             currentIdx = idx;
             const v = playlist[idx];
 
-            console.log('▶️ Phát:', v.title, 'ID:', v.id);
-
-            // Cập nhật giao diện trang phát
             el.watchTitle.textContent = v.title;
             el.watchChannel.textContent = v.channel;
-            
-            // Cập nhật thanh phát dưới
             el.miniThumb.src = v.thumb;
             el.miniTitle.textContent = v.title;
             el.miniChannel.textContent = v.channel;
@@ -447,8 +448,6 @@
             if (isReady) { 
                 player.loadVideoById({ videoId: v.id, suggestedQuality: 'hd720' });
                 player.playVideo(); 
-            } else {
-                console.warn('⏳ Trình phát chưa sẵn sàng');
             }
             
             el.miniPlayer.classList.remove('translate-y-full');
@@ -485,7 +484,7 @@
 
         function updatePlayButtons() {
             const icon = isPlaying ? 'fa-pause' : 'fa-play';
-            el.watchPlayPause.innerHTML = `<i class="fa ${icon} ml-1 text-xl"></i>`;
+            el.watchPlayPause.innerHTML = `<i class="fa ${icon} ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>`;
             el.miniPlayPause.innerHTML = `<i class="fa ${icon} ml-0.5"></i>`;
         }
 
@@ -508,12 +507,12 @@
             playlist.forEach((item, i) => {
                 const active = i === currentIdx;
                 const div = document.createElement('div');
-                div.className = `flex items-center gap-3 p-2 rounded-lg transition ${active ? 'bg-hoverGray' : 'hover:bg-hoverGray/50'}`;
+                div.className = `flex items-center gap-2 sm:gap-3 p-2 rounded-lg transition ${active ? 'bg-hoverGray' : 'hover:bg-hoverGray/50'}`;
                 div.innerHTML = `
-                    <div class="w-6 text-center text-sm ${active && isPlaying ? 'text-red' : 'text-grayText'}">
+                    <div class="w-5 text-center text-sm ${active && isPlaying ? 'text-red' : 'text-grayText'}">
                         ${active && isPlaying ? '<div class="playing-animation"><span></span><span></span><span></span></div>' : i+1}
                     </div>
-                    <img src="${item.thumb}" alt="" class="w-16 h-9 rounded object-cover">
+                    <img src="${item.thumb}" alt="" class="w-14 h-8 sm:w-16 sm:h-9 rounded object-cover">
                     <div class="flex-1 min-w-0">
                         <h4 class="text-sm font-medium line-clamp-2 ${active ? 'text-red' : ''}">${item.title}</h4>
                         <p class="text-xs text-grayText mt-0.5">${item.channel}</p>
@@ -544,8 +543,7 @@
 
         function updateLikeButton() {
             if (currentIdx === -1) return;
-            const v = playlist[currentIdx];
-            const isFav = favorites.some(x => x.id === v.id);
+            const isFav = favorites.some(x => x.id === playlist[currentIdx].id);
             el.watchLike.innerHTML = `<i class="fa ${isFav ? 'fa-heart text-red' : 'fa-heart-o'}"></i><span>Yêu thích</span>`;
         }
 
@@ -575,38 +573,17 @@
 
         // ==================== SỰ KIỆN ====================
         function setupEvents() {
-            // Ô tìm kiếm
-            el.searchInput.addEventListener('focus', function() {
-                this.style.pointerEvents = 'auto';
-            });
+            el.searchInput.addEventListener('keydown', e => e.key === 'Enter' && search(el.searchInput.value.trim()));
+            el.searchBtn.addEventListener('click', e => { e.preventDefault(); search(el.searchInput.value.trim()); });
             
-            el.searchBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                search(el.searchInput.value.trim());
-            });
+            el.sidebarToggle.onclick = toggleSidebar;
             
-            el.searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    search(el.searchInput.value.trim());
-                }
-            });
-            
-            el.logoLink.onclick = el.homeLink.onclick = (e) => {
+            el.logoLink.onclick = el.homeLink.onclick = e => {
                 e.preventDefault();
                 if (currentSearchResults.length) renderHomePage(currentSearchResults);
                 showPage('home');
             };
-            el.favPageLink.onclick = el.favBtn.onclick = (e) => {
-                e.preventDefault();
-                showFavorites();
-            };
-            
-            el.sidebarToggle.onclick = () => {
-                const hidden = el.sidebar.style.transform === 'translateX(-100%)';
-                el.sidebar.style.transform = hidden ? 'translateX(0)' : 'translateX(-100%)';
-                el.mainContent.style.marginLeft = hidden ? '15rem' : '0';
-            };
+            el.favPageLink.onclick = el.favBtn.onclick = e => { e.preventDefault(); showFavorites(); };
             
             el.watchPlayPause.onclick = el.miniPlayPause.onclick = togglePlay;
             el.watchNext.onclick = el.miniNext.onclick = playNext;
@@ -630,14 +607,11 @@
             };
             
             el.watchLike.onclick = toggleLike;
-            
             el.miniExpand.onclick = () => showPage('watch');
             
-            // Giữ phát ngầm trên CarPlay
+            // Phát ngầm CarPlay
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && isPlaying && player) {
-                    player.playVideo();
-                }
+                if (!document.hidden && isPlaying && player) player.playVideo();
             });
         }
 

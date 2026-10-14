@@ -35,31 +35,35 @@
         .playing-animation span:nth-child(3) { animation-delay: 0.3s; }
         @keyframes playing { from { height: 6px; } to { height: 18px; } }
         #youtube-player { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }
-        .banner-gradient { background: linear-gradient(to bottom, transparent 0%, rgba(15,15,15,0.4) 60%, rgba(15,15,15,1) 100%); }
         .card-hover:hover { transform: scale(1.03); transition: transform 0.2s ease; }
-        @media (min-width: 1200px) { .player-controls { gap: 2rem; } }
-        @media (min-width: 1600px) { .player-controls { gap: 3rem; } .control-btn { font-size: 1.4rem; } }
+        .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
+        .sidebar-link.active { background-color: rgba(255,255,255,0.15); font-weight: 500; }
+        @media (min-width: 1920px) { .video-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+        @media (min-width: 2560px) { .video-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-dark text-lightText font-sans antialiased overflow-x-hidden">
-    <!-- YouTube Player ẩn - phát nền -->
+    <!-- YouTube Player ẩn - Phát nền, không hiển thị quảng cáo -->
     <div id="youtube-player"></div>
 
-    <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 bg-dark/90 backdrop-blur-md z-50 px-4 md:px-6 py-3 flex items-center justify-between border-b border-gray-800/50">
-        <div class="flex items-center gap-3">
-            <a href="#" class="flex items-center gap-2">
-                <div class="bg-red rounded-full w-9 h-9 flex items-center justify-center">
-                    <i class="fa fa-music text-white"></i>
+    <!-- Header Cố định -->
+    <header class="fixed top-0 left-0 right-0 bg-dark z-50 px-4 md:px-6 py-3 flex items-center justify-between border-b border-gray-800/50">
+        <div class="flex items-center gap-4">
+            <button id="sidebarToggle" class="p-2 hover:bg-darkGray rounded-full transition">
+                <i class="fa fa-bars"></i>
+            </button>
+            <a href="#" id="logoLink" class="flex items-center gap-1.5">
+                <div class="bg-red rounded-full w-8 h-8 flex items-center justify-center">
+                    <i class="fa fa-play text-white text-xs ml-0.5"></i>
                 </div>
                 <span class="font-bold text-xl hidden sm:inline">MusicPlay</span>
             </a>
         </div>
 
-        <div class="flex-1 max-w-[600px] mx-4">
+        <div class="flex-1 max-w-[640px] mx-4">
             <div class="relative flex">
                 <input type="text" id="searchInput" placeholder="Tìm kiếm bài hát, nghệ sĩ..." 
                     class="w-full px-5 py-2.5 bg-darkGray border border-gray-700 rounded-l-full focus:outline-none focus:border-red text-base">
@@ -79,91 +83,97 @@
         </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="pt-16 pb-8">
-        <!-- Banner Đang Phát - Giống giao diện YouTube -->
-        <section id="heroSection" class="hidden relative">
-            <div class="w-full h-[45vh] md:h-[55vh] lg:h-[60vh] overflow-hidden">
-                <img id="heroBanner" src="" alt="" class="w-full h-full object-cover">
-                <div class="banner-gradient absolute inset-0"></div>
+    <!-- Bố cục chính -->
+    <div class="flex pt-16">
+        <!-- Thanh bên trái -->
+        <aside id="sidebar" class="w-60 fixed left-0 top-14 bottom-16 bg-dark overflow-y-auto transition-all duration-300 z-40">
+            <div class="p-2">
+                <ul class="space-y-1">
+                    <li><a href="#" id="homeLink" class="sidebar-link active flex items-center gap-6 px-3 py-2.5 rounded-lg"><i class="fa fa-home w-5 text-center"></i><span>Trang chủ</span></a></li>
+                    <li><a href="#" id="favPageLink" class="sidebar-link flex items-center gap-6 px-3 py-2.5 rounded-lg"><i class="fa fa-heart w-5 text-center"></i><span>Yêu thích</span></a></li>
+                    <li><a href="#" id="queuePageLink" class="sidebar-link flex items-center gap-6 px-3 py-2.5 rounded-lg"><i class="fa fa-list w-5 text-center"></i><span>Danh sách phát</span></a></li>
+                </ul>
             </div>
-            
-            <div class="px-4 md:px-8 -mt-24 md:-mt-32 relative z-10">
-                <div class="flex flex-col md:flex-row gap-6 items-start">
-                    <!-- Thông tin chính -->
+        </aside>
+
+        <!-- Nội dung chính -->
+        <main id="mainContent" class="flex-1 ml-60 pb-20 transition-all duration-300">
+            <!-- Trang chủ - Lưới video giống YouTube -->
+            <section id="homePage" class="p-4 md:p-6">
+                <h2 id="pageTitle" class="text-xl font-bold mb-4">Tìm kiếm bài hát</h2>
+                <div id="videoGrid" class="video-grid grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <p class="col-span-full text-grayText text-center py-12">Nhập từ khóa ở trên để tìm kiếm bài hát trên YouTube</p>
+                </div>
+            </section>
+
+            <!-- Trang phát nhạc - Giống trang xem video YouTube -->
+            <section id="watchPage" class="hidden p-4 md:p-6">
+                <div class="flex flex-col lg:flex-row gap-6">
+                    <!-- Cột trái: Phát nhạc chính -->
                     <div class="flex-1">
-                        <h1 id="heroTitle" class="text-xl md:text-2xl lg:text-3xl font-bold leading-tight mb-2 line-clamp-2">Tên bài hát</h1>
-                        <p id="heroChannel" class="text-grayText text-base mb-4">Tên kênh / Nghệ sĩ</p>
+                        <!-- Khung ảnh bìa thay vì video - không hiển thị quảng cáo -->
+                        <div class="w-full aspect-video rounded-xl overflow-hidden bg-darkGray mb-4">
+                            <img id="watchThumb" src="" alt="" class="w-full h-full object-cover">
+                        </div>
+                        
+                        <!-- Thông tin bài hát -->
+                        <h1 id="watchTitle" class="text-xl md:text-2xl font-bold mb-2 line-clamp-2">Tên bài hát</h1>
+                        <p id="watchChannel" class="text-grayText mb-4">Tên kênh / Nghệ sĩ</p>
                         
                         <!-- Thanh tiến độ -->
-                        <div class="mb-4 max-w-2xl">
-                            <input type="range" id="heroProgress" class="progress-bar" min="0" max="100" value="0">
+                        <div class="mb-4">
+                            <input type="range" id="watchProgress" class="progress-bar" min="0" max="100" value="0">
                             <div class="flex justify-between text-sm text-grayText mt-1">
-                                <span id="heroCurrent">0:00</span>
-                                <span id="heroTotal">0:00</span>
+                                <span id="watchCurrent">0:00</span>
+                                <span id="watchTotal">0:00</span>
                             </div>
                         </div>
                         
                         <!-- Nút điều khiển chính -->
-                        <div class="flex items-center gap-4 md:gap-6 lg:gap-8 player-controls mb-4">
-                            <button id="heroShuffle" class="text-grayText hover:text-white transition control-btn">
+                        <div class="flex items-center gap-4 md:gap-6 mb-6">
+                            <button id="watchShuffle" class="text-grayText hover:text-white transition">
                                 <i class="fa fa-random fa-lg"></i>
                             </button>
-                            <button id="heroPrev" class="text-lightText hover:text-white transition text-xl control-btn">
+                            <button id="watchPrev" class="text-lightText hover:text-white transition text-xl">
                                 <i class="fa fa-step-backward"></i>
                             </button>
-                            <button id="heroPlayPause" class="w-14 h-14 md:w-16 md:h-16 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg control-btn">
+                            <button id="watchPlayPause" class="w-14 h-14 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg">
                                 <i class="fa fa-play ml-1 text-xl"></i>
                             </button>
-                            <button id="heroNext" class="text-lightText hover:text-white transition text-xl control-btn">
+                            <button id="watchNext" class="text-lightText hover:text-white transition text-xl">
                                 <i class="fa fa-step-forward"></i>
                             </button>
-                            <button id="heroRepeat" class="text-grayText hover:text-white transition control-btn">
+                            <button id="watchRepeat" class="text-grayText hover:text-white transition">
                                 <i class="fa fa-repeat fa-lg"></i>
                             </button>
                         </div>
                         
                         <!-- Nút hành động -->
-                        <div class="flex flex-wrap gap-3 mt-2">
-                            <button id="heroLike" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
+                        <div class="flex flex-wrap gap-3 mb-6">
+                            <button id="watchLike" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
                                 <i class="fa fa-heart-o"></i>
                                 <span>Yêu thích</span>
                             </button>
-                            <button id="heroShare" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
+                            <button id="watchShare" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
                                 <i class="fa fa-share"></i>
                                 <span>Chia sẻ</span>
-                            </button>
-                            <button id="heroQueueToggle" class="flex items-center gap-2 px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition">
-                                <i class="fa fa-list"></i>
-                                <span>Danh sách chờ</span>
                             </button>
                         </div>
                     </div>
                     
-                    <!-- Danh sách chờ bên phải -->
-                    <div id="heroQueue" class="w-full md:w-[360px] lg:w-[400px] bg-darkGray/50 rounded-xl p-4 max-h-[400px] overflow-y-auto">
-                        <h3 class="font-bold mb-3 flex items-center justify-between">
-                            <span>Danh sách phát</span>
-                            <span id="queueCount" class="text-sm text-grayText">0 bài</span>
-                        </h3>
-                        <div id="queueList" class="space-y-2">
+                    <!-- Cột phải: Danh sách phát liên quan -->
+                    <div class="w-full lg:w-[400px] xl:w-[450px]">
+                        <h3 class="font-bold mb-3">Danh sách phát</h3>
+                        <div id="relatedList" class="space-y-3 max-h-[70vh] overflow-y-auto">
                             <p class="text-grayText text-sm py-4 text-center">Chưa có bài hát nào</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </main>
+    </div>
 
-        <!-- Kết quả tìm kiếm / Đề xuất -->
-        <section class="px-4 md:px-8 mt-8">
-            <h2 id="sectionHeading" class="text-xl font-bold mb-4">Tìm kiếm bài hát</h2>
-            <div id="resultsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                <p class="col-span-full text-grayText text-center py-12">Nhập từ khóa ở trên để tìm kiếm bài hát trên YouTube</p>
-            </div>
-        </section>
-    </main>
-
-    <!-- Thanh phát nhỏ dưới cùng -->
+    <!-- Thanh phát nhỏ dưới cùng - Luôn hiển thị khi đang phát -->
     <div id="miniPlayer" class="fixed bottom-0 left-0 right-0 bg-darkGray border-t border-gray-700 px-4 py-3 z-50 transform translate-y-full transition-transform duration-300">
         <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -201,7 +211,7 @@
     </div>
 
     <script>
-        // ==================== CẤU HÌNH - ĐÃ ĐIỀN SẴN KHÓA API CỦA BẠN ====================
+        // ==================== CẤU HÌNH - ĐÃ ĐIỀN SẴN API CỦA BẠN ====================
         const YOUTUBE_API_KEY = "AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0";
         
         const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
@@ -216,31 +226,40 @@
         let repeatMode = 0; // 0: tắt, 1: lặp danh sách, 2: lặp 1 bài
         let isPlaying = false;
         let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
+        let currentSearchResults = [];
 
         // ==================== PHẦN TỬ ====================
         const el = {
             searchInput: document.getElementById('searchInput'),
             searchBtn: document.getElementById('searchBtn'),
-            sectionHeading: document.getElementById('sectionHeading'),
-            resultsGrid: document.getElementById('resultsGrid'),
+            pageTitle: document.getElementById('pageTitle'),
+            videoGrid: document.getElementById('videoGrid'),
             loadingOverlay: document.getElementById('loadingOverlay'),
-            heroSection: document.getElementById('heroSection'),
+            sidebar: document.getElementById('sidebar'),
+            mainContent: document.getElementById('mainContent'),
+            sidebarToggle: document.getElementById('sidebarToggle'),
+            logoLink: document.getElementById('logoLink'),
+            homeLink: document.getElementById('homeLink'),
+            favPageLink: document.getElementById('favPageLink'),
+            queuePageLink: document.getElementById('queuePageLink'),
+            favBtn: document.getElementById('favBtn'),
             
-            heroBanner: document.getElementById('heroBanner'),
-            heroTitle: document.getElementById('heroTitle'),
-            heroChannel: document.getElementById('heroChannel'),
-            heroProgress: document.getElementById('heroProgress'),
-            heroCurrent: document.getElementById('heroCurrent'),
-            heroTotal: document.getElementById('heroTotal'),
-            heroPlayPause: document.getElementById('heroPlayPause'),
-            heroPrev: document.getElementById('heroPrev'),
-            heroNext: document.getElementById('heroNext'),
-            heroShuffle: document.getElementById('heroShuffle'),
-            heroRepeat: document.getElementById('heroRepeat'),
-            heroLike: document.getElementById('heroLike'),
-            heroQueue: document.getElementById('heroQueue'),
-            queueList: document.getElementById('queueList'),
-            queueCount: document.getElementById('queueCount'),
+            homePage: document.getElementById('homePage'),
+            watchPage: document.getElementById('watchPage'),
+            
+            watchThumb: document.getElementById('watchThumb'),
+            watchTitle: document.getElementById('watchTitle'),
+            watchChannel: document.getElementById('watchChannel'),
+            watchProgress: document.getElementById('watchProgress'),
+            watchCurrent: document.getElementById('watchCurrent'),
+            watchTotal: document.getElementById('watchTotal'),
+            watchPlayPause: document.getElementById('watchPlayPause'),
+            watchPrev: document.getElementById('watchPrev'),
+            watchNext: document.getElementById('watchNext'),
+            watchShuffle: document.getElementById('watchShuffle'),
+            watchRepeat: document.getElementById('watchRepeat'),
+            watchLike: document.getElementById('watchLike'),
+            relatedList: document.getElementById('relatedList'),
             
             miniPlayer: document.getElementById('miniPlayer'),
             miniThumb: document.getElementById('miniThumb'),
@@ -251,12 +270,10 @@
             miniNext: document.getElementById('miniNext'),
             miniProgress: document.getElementById('miniProgress'),
             miniTime: document.getElementById('miniTime'),
-            miniExpand: document.getElementById('miniExpand'),
-            
-            favBtn: document.getElementById('favBtn')
+            miniExpand: document.getElementById('miniExpand')
         };
 
-        // ==================== TẢI API YOUTUBE ====================
+        // ==================== TẢI API YOUTUBE - TRÌNH PHÁT ẨN KHÔNG HIỂN THỊ QUẢNG CÁO ====================
         function loadAPI() {
             const s = document.createElement('script');
             s.src = "https://www.youtube.com/iframe_api";
@@ -266,7 +283,15 @@
         window.onYouTubeIframeAPIReady = function() {
             player = new YT.Player('youtube-player', {
                 height: '1', width: '1',
-                playerVars: { autoplay: 0, controls: 0, enablejsapi: 1, origin: location.origin },
+                playerVars: { 
+                    autoplay: 0, 
+                    controls: 0, 
+                    enablejsapi: 1, 
+                    origin: location.origin,
+                    rel: 0,
+                    showinfo: 0,
+                    modestbranding: 1
+                },
                 events: {
                     onReady: e => { isReady = true; e.target.setVolume(75); },
                     onStateChange: handleState,
@@ -306,7 +331,7 @@
                 const vRes = await fetch(`${API_VIDEOS}?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`);
                 const vData = await vRes.json();
 
-                const list = sData.items.map(item => {
+                currentSearchResults = sData.items.map(item => {
                     const v = vData.items?.find(x => x.id === item.id.videoId);
                     return {
                         id: item.id.videoId,
@@ -317,17 +342,18 @@
                     };
                 });
 
-                el.sectionHeading.textContent = `Kết quả cho "${q}"`;
-                renderResults(list);
+                el.pageTitle.textContent = `Kết quả cho "${q}"`;
+                renderHomePage(currentSearchResults);
+                showPage('home');
             } catch {
-                el.resultsGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
+                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
             } finally {
                 el.loadingOverlay.classList.add('hidden');
             }
         }
 
-        function renderResults(list) {
-            el.resultsGrid.innerHTML = '';
+        function renderHomePage(list) {
+            el.videoGrid.innerHTML = '';
             list.forEach(v => {
                 const card = document.createElement('div');
                 card.className = 'cursor-pointer card-hover transition-all duration-200';
@@ -335,45 +361,52 @@
                     <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
                         <img src="${v.thumb}" alt="" class="w-full h-full object-cover">
                         <span class="absolute bottom-2 right-2 bg-black/80 text-xs px-1.5 py-0.5 rounded">${v.duration}</span>
-                        <div class="absolute inset-0 flex items-center justify-center bg-black/0 hover:bg-black/50 transition">
-                            <i class="fa fa-play text-white text-2xl opacity-0 hover:opacity-100 transition"></i>
-                        </div>
                     </div>
                     <h3 class="font-medium line-clamp-2">${v.title}</h3>
                     <p class="text-sm text-grayText mt-1">${v.channel}</p>
                 `;
-                card.onclick = () => addAndPlay(v);
-                el.resultsGrid.appendChild(card);
+                card.onclick = () => {
+                    if (!playlist.some(x => x.id === v.id)) playlist.push(v);
+                    playAt(playlist.length - 1);
+                };
+                el.videoGrid.appendChild(card);
             });
         }
 
-        // ==================== PHÁT NHẠC ====================
-        function addAndPlay(v) {
-            if (!playlist.some(x => x.id === v.id)) playlist.push(v);
-            if (currentIdx === -1) playAt(playlist.length - 1);
-            else renderQueue();
+        // ==================== CHUYỂN TRANG ====================
+        function showPage(page) {
+            el.homePage.classList.toggle('hidden', page !== 'home');
+            el.watchPage.classList.toggle('hidden', page !== 'watch');
+            
+            [el.homeLink, el.favPageLink, el.queuePageLink].forEach(link => link.classList.remove('active'));
+            if (page === 'home') el.homeLink.classList.add('active');
         }
 
+        // ==================== PHÁT NHẠC ====================
         function playAt(idx) {
             if (idx < 0 || idx >= playlist.length) return;
             currentIdx = idx;
             const v = playlist[idx];
 
-            // Cập nhật giao diện
-            el.heroBanner.src = v.thumb;
-            el.heroTitle.textContent = v.title;
-            el.heroChannel.textContent = v.channel;
+            // Cập nhật giao diện trang phát
+            el.watchThumb.src = v.thumb;
+            el.watchTitle.textContent = v.title;
+            el.watchChannel.textContent = v.channel;
+            
+            // Cập nhật thanh phát dưới
             el.miniThumb.src = v.thumb;
             el.miniTitle.textContent = v.title;
             el.miniChannel.textContent = v.channel;
             
-            if (isReady) { player.loadVideoById(v.id); player.playVideo(); }
+            if (isReady) { 
+                player.loadVideoById(v.id); 
+                player.playVideo(); 
+            }
             
-            el.heroSection.classList.remove('hidden');
             el.miniPlayer.classList.remove('translate-y-full');
-            
-            renderQueue();
+            renderRelatedList();
             updateLikeButton();
+            showPage('watch');
         }
 
         function playNext() {
@@ -404,7 +437,7 @@
 
         function updatePlayButtons() {
             const icon = isPlaying ? 'fa-pause' : 'fa-play';
-            el.heroPlayPause.innerHTML = `<i class="fa ${icon} ml-1 text-xl"></i>`;
+            el.watchPlayPause.innerHTML = `<i class="fa ${icon} ml-1 text-xl"></i>`;
             el.miniPlayPause.innerHTML = `<i class="fa ${icon} ml-0.5"></i>`;
         }
 
@@ -413,30 +446,29 @@
             const t = player.getCurrentTime(), d = player.getDuration();
             if (d) {
                 const pct = (t / d) * 100;
-                el.heroProgress.value = pct;
+                el.watchProgress.value = pct;
                 el.miniProgress.value = pct;
-                el.heroCurrent.textContent = fmtTime(t);
-                el.heroTotal.textContent = fmtTime(d);
+                el.watchCurrent.textContent = fmtTime(t);
+                el.watchTotal.textContent = fmtTime(d);
                 el.miniTime.textContent = `${fmtTime(t)} / ${fmtTime(d)}`;
             }
             if (isPlaying) requestAnimationFrame(updateTime);
         }
 
-        function renderQueue() {
-            el.queueCount.textContent = `${playlist.length} bài`;
-            el.queueList.innerHTML = '';
+        function renderRelatedList() {
+            el.relatedList.innerHTML = '';
             playlist.forEach((item, i) => {
                 const active = i === currentIdx;
                 const div = document.createElement('div');
-                div.className = `flex items-center gap-3 p-2 rounded-lg transition ${active ? 'bg-red/20' : 'hover:bg-hoverGray/50'}`;
+                div.className = `flex items-center gap-3 p-2 rounded-lg transition ${active ? 'bg-hoverGray' : 'hover:bg-hoverGray/50'}`;
                 div.innerHTML = `
                     <div class="w-6 text-center text-sm ${active && isPlaying ? 'text-red' : 'text-grayText'}">
                         ${active && isPlaying ? '<div class="playing-animation"><span></span><span></span><span></span></div>' : i+1}
                     </div>
-                    <img src="${item.thumb}" alt="" class="w-10 h-10 rounded object-cover">
+                    <img src="${item.thumb}" alt="" class="w-16 h-9 rounded object-cover">
                     <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-medium truncate ${active ? 'text-red' : ''}">${item.title}</h4>
-                        <p class="text-xs text-grayText truncate">${item.channel}</p>
+                        <h4 class="text-sm font-medium line-clamp-2 ${active ? 'text-red' : ''}">${item.title}</h4>
+                        <p class="text-xs text-grayText mt-0.5">${item.channel}</p>
                     </div>
                     <button class="del-btn text-grayText hover:text-red p-1"><i class="fa fa-times"></i></button>
                 `;
@@ -446,9 +478,9 @@
                     playlist.splice(i, 1);
                     if (i === currentIdx && playlist.length) playAt(Math.min(i, playlist.length-1));
                     else if (currentIdx >= i) currentIdx--;
-                    renderQueue();
+                    renderRelatedList();
                 };
-                el.queueList.appendChild(div);
+                el.relatedList.appendChild(div);
             });
         }
 
@@ -466,16 +498,17 @@
             if (currentIdx === -1) return;
             const v = playlist[currentIdx];
             const isFav = favorites.some(x => x.id === v.id);
-            el.heroLike.innerHTML = `<i class="fa ${isFav ? 'fa-heart text-red' : 'fa-heart-o'}"></i><span>Yêu thích</span>`;
+            el.watchLike.innerHTML = `<i class="fa ${isFav ? 'fa-heart text-red' : 'fa-heart-o'}"></i><span>Yêu thích</span>`;
         }
 
         function showFavorites() {
-            el.sectionHeading.textContent = 'Bài hát yêu thích';
+            el.pageTitle.textContent = 'Bài hát yêu thích';
             if (!favorites.length) {
-                el.resultsGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-12">Chưa có bài hát yêu thích</p>`;
+                el.videoGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-12">Chưa có bài hát yêu thích</p>`;
                 return;
             }
-            renderResults(favorites);
+            renderHomePage(favorites);
+            showPage('home');
         }
 
         // ==================== TIỆN ÍCH ====================
@@ -497,33 +530,44 @@
             el.searchBtn.onclick = () => search(el.searchInput.value.trim());
             el.searchInput.onkeypress = e => e.key === 'Enter' && search(el.searchInput.value.trim());
             
-            el.heroPlayPause.onclick = el.miniPlayPause.onclick = togglePlay;
-            el.heroNext.onclick = el.miniNext.onclick = playNext;
-            el.heroPrev.onclick = el.miniPrev.onclick = playPrev;
+            el.logoLink.onclick = el.homeLink.onclick = () => {
+                if (currentSearchResults.length) renderHomePage(currentSearchResults);
+                showPage('home');
+            };
+            el.favPageLink.onclick = el.favBtn.onclick = showFavorites;
             
-            el.heroShuffle.onclick = () => {
+            el.sidebarToggle.onclick = () => {
+                const hidden = el.sidebar.style.transform === 'translateX(-100%)';
+                el.sidebar.style.transform = hidden ? 'translateX(0)' : 'translateX(-100%)';
+                el.mainContent.style.marginLeft = hidden ? '15rem' : '0';
+            };
+            
+            el.watchPlayPause.onclick = el.miniPlayPause.onclick = togglePlay;
+            el.watchNext.onclick = el.miniNext.onclick = playNext;
+            el.watchPrev.onclick = el.miniPrev.onclick = playPrev;
+            
+            el.watchShuffle.onclick = () => {
                 isShuffle = !isShuffle;
-                el.heroShuffle.classList.toggle('text-red', isShuffle);
-                el.heroShuffle.classList.toggle('text-grayText', !isShuffle);
+                el.watchShuffle.classList.toggle('text-red', isShuffle);
+                el.watchShuffle.classList.toggle('text-grayText', !isShuffle);
             };
-            el.heroRepeat.onclick = () => {
+            el.watchRepeat.onclick = () => {
                 repeatMode = (repeatMode + 1) % 3;
-                el.heroRepeat.classList.toggle('text-red', repeatMode > 0);
-                el.heroRepeat.classList.toggle('text-grayText', repeatMode === 0);
+                el.watchRepeat.classList.toggle('text-red', repeatMode > 0);
+                el.watchRepeat.classList.toggle('text-grayText', repeatMode === 0);
             };
             
-            el.heroProgress.oninput = el.miniProgress.oninput = function() {
+            el.watchProgress.oninput = el.miniProgress.oninput = function() {
                 if (!isReady) return;
                 const d = player.getDuration();
                 player.seekTo((this.value / 100) * d);
             };
             
-            el.heroLike.onclick = toggleLike;
-            el.favBtn.onclick = showFavorites;
+            el.watchLike.onclick = toggleLike;
             
-            el.miniExpand.onclick = () => el.heroSection.scrollIntoView({behavior:'smooth'});
+            el.miniExpand.onclick = () => showPage('watch');
             
-            // Giữ phát ngầm trên CarPlay
+            // Giữ phát ngầm trên CarPlay - không dừng khi chuyển ứng dụng
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden && isPlaying && player) player.playVideo();
             });

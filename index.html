@@ -105,6 +105,7 @@
             justify-content: center;
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             transition: opacity 0.3s ease;
+            z-index: 10;
         }
         .player-loading.hidden {
             opacity: 0;
@@ -127,6 +128,7 @@
         }
         .hide-scrollbar::-webkit-scrollbar { width: 4px; }
         .hide-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+        .suggest-item:hover { background-color: rgba(255,255,255,0.08); }
         @media (min-width: 800px) {
             .btn-large { min-height: 44px; min-width: 44px; }
             .sidebar-link {
@@ -220,16 +222,17 @@
                 </div>
             </section>
 
-            <!-- Trang phát nhạc -->
+            <!-- Trang phát nhạc - ĐÃ TỐI ƯU: Bỏ danh sách cũ, thay bằng gợi ý -->
             <section id="watchPage" class="hidden">
                 <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
-                    <div class="flex-1 flex flex-col">
-                        <div class="player-wrapper mb-3 sm:mb-4">
+                    <!-- Cột trái: Video chính - SỬA LỖI MÀN HÌNH ĐEN -->
+                    <div class="flex-1 flex flex-col min-w-0">
+                        <div class="player-wrapper mb-3 sm:mb-4 relative">
                             <div id="playerLoading" class="player-loading">
                                 <i class="fa fa-spinner fa-spin fa-3x text-red mb-3"></i>
                                 <p class="text-grayText">Đang tải trình phát...</p>
                             </div>
-                            <div id="youtube-player"></div>
+                            <iframe id="youtube-player" frameborder="0" allowfullscreen allow="autoplay; encrypted-media; picture-in-picture"></iframe>
                         </div>
                         
                         <h1 id="watchTitle" class="text-lg sm:text-xl ipad:text-2xl font-bold mb-2 line-clamp-2">Tên bài hát</h1>
@@ -273,10 +276,11 @@
                         </div>
                     </div>
                     
-                    <div class="w-full lg:w-[340px] xl:w-[400px] shrink-0 flex flex-col">
-                        <h3 class="font-bold mb-2 sm:mb-3">Danh sách phát</h3>
-                        <div id="relatedList" class="space-y-2 sm:space-y-3 flex-1 overflow-y-auto hide-scrollbar">
-                            <p class="text-grayText text-sm py-4 text-center">Chưa có bài hát nào</p>
+                    <!-- Cột phải: GỢI Ý BÀI HÁT THAY VÌ DANH SÁCH CŨ -->
+                    <div class="w-full lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col min-w-0">
+                        <h3 class="font-bold mb-2 sm:mb-3">🎶 Gợi ý cho bạn</h3>
+                        <div id="suggestedList" class="space-y-2 sm:space-y-3 flex-1 overflow-y-auto hide-scrollbar pr-1">
+                            <p class="text-grayText text-sm py-4 text-center">Đang tải gợi ý...</p>
                         </div>
                     </div>
                 </div>
@@ -297,7 +301,7 @@
         const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
         const API_VIDEOS = "https://www.googleapis.com/youtube/v3/videos";
 
-        // ==================== DANH SÁCH GỢI Ý KHI MỞ WEBAPP ====================
+        // ==================== DANH SÁCH GỢI Ý ====================
         const SUGGESTED_KEYWORDS = [
             "nhạc vàng bolero hay nhất",
             "lk bolero trữ tình 2026",
@@ -315,6 +319,7 @@
         let isShuffle = false, repeatMode = 0, isPlaying = false;
         let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
         let currentSearchResults = [];
+        let suggestedList = [];
         let pendingVideoId = null;
         let sidebarCollapsed = false;
 
@@ -347,7 +352,7 @@
             watchShuffle: document.getElementById('watchShuffle'),
             watchRepeat: document.getElementById('watchRepeat'),
             watchLike: document.getElementById('watchLike'),
-            relatedList: document.getElementById('relatedList')
+            suggestedList: document.getElementById('suggestedList')
         };
 
         // ==================== MENU THAN BÊN ====================
@@ -362,86 +367,7 @@
             }
         }
 
-        // ==================== TẢI DANH SÁCH GỢI Ý KHI MỞ TRANG ====================
-        async function loadSuggestions() {
-            el.loadingOverlay.classList.remove('hidden');
-            try {
-                // Lấy kết quả cho từ khóa đầu tiên, sau đó gộp thêm kết hợp
-                const randomKeyword = SUGGESTED_KEYWORDS[Math.floor(Math.random() * SUGGESTED_KEYWORDS.length)];
-                await searchDirect(randomKeyword, true); // true = là gợi ý trang chủ
-            } catch (err) {
-                console.error('Lỗi tải gợi ý:', err);
-                el.videoGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-8">Không tải được gợi ý, vui lòng tìm kiếm thủ công</p>`;
-            } finally {
-                el.loadingOverlay.classList.add('hidden');
-            }
-        }
-
-        // Tìm kiếm trực tiếp (dành cho gợi ý và tìm kiếm bình thường)
-        async function searchDirect(q, isSuggestion = false) {
-            if (!q || q.trim() === '') return;
-            if (!isSuggestion) el.loadingOverlay.classList.remove('hidden');
-            
-            try {
-                const sRes = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
-                const sData = await sRes.json();
-                if (!sData.items) throw Error('Không có kết quả');
-
-                const ids = sData.items.map(i => i.id.videoId).join(',');
-                const vRes = await fetch(`${API_VIDEOS}?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`);
-                const vData = await vRes.json();
-
-                currentSearchResults = sData.items.map(item => ({
-                    id: item.id.videoId,
-                    title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-                    channel: item.snippet.channelTitle,
-                    thumb: item.snippet.thumbnails.high.url,
-                    duration: formatDur(vData.items?.find(x => x.id === item.id.videoId)?.contentDetails?.duration)
-                }));
-
-                if (!isSuggestion) {
-                    el.pageTitle.textContent = `Kết quả cho "${q}"`;
-                }
-                renderHomePage(currentSearchResults);
-                showPage('home');
-            } catch (err) {
-                console.error('Lỗi tìm kiếm:', err);
-                if (!isSuggestion) {
-                    el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
-                }
-            } finally {
-                if (!isSuggestion) el.loadingOverlay.classList.add('hidden');
-            }
-        }
-
-        // Tìm kiếm theo yêu cầu người dùng
-        function search(q) {
-            if (!q || q.trim() === '') return;
-            searchDirect(q, false);
-        }
-
-        function renderHomePage(list) {
-            el.videoGrid.innerHTML = '';
-            list.forEach(v => {
-                const card = document.createElement('div');
-                card.className = 'cursor-pointer card-hover transition-all duration-200';
-                card.innerHTML = `
-                    <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
-                        <img src="${v.thumb}" alt="${v.title}" loading="lazy" class="w-full h-full object-cover">
-                        <span class="absolute bottom-2 right-2 bg-black/80 text-xs px-1.5 py-0.5 rounded">${v.duration}</span>
-                    </div>
-                    <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
-                    <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
-                `;
-                card.onclick = () => {
-                    if (!playlist.some(x => x.id === v.id)) playlist.push(v);
-                    playAt(playlist.length - 1);
-                };
-                el.videoGrid.appendChild(card);
-            });
-        }
-
-        // ==================== TẢI API YOUTUBE ====================
+        // ==================== TẠO TRÌNH PHÁT - SỬA LỖI MÀN HÌNH ĐEN ====================
         function loadAPI() {
             const s = document.createElement('script');
             s.src = "https://www.youtube.com/iframe_api";
@@ -449,7 +375,7 @@
         }
 
         window.onYouTubeIframeAPIReady = function() {
-            console.log('📌 Bắt đầu khởi tạo trình phát...');
+            console.log('📌 Khởi tạo trình phát...');
             player = new YT.Player('youtube-player', {
                 height: '100%',
                 width: '100%',
@@ -459,13 +385,12 @@
                 },
                 events: {
                     onReady: e => {
-                        console.log('✅ Trình phát đã sẵn sàng');
+                        console.log('✅ Trình phát sẵn sàng');
                         isReady = true;
                         e.target.setVolume(75);
                         el.youtubePlayer.classList.add('ready');
                         el.playerLoading.classList.add('hidden');
                         if (pendingVideoId) {
-                            console.log('▶️ Phát bài đang chờ:', pendingVideoId);
                             player.loadVideoById({ videoId: pendingVideoId, suggestedQuality: 'hd720' });
                             player.playVideo();
                             pendingVideoId = null;
@@ -497,6 +422,127 @@
             }
         }
 
+        // ==================== TÌM KIẾM & TẢI DỮ LIỆU ====================
+        async function searchDirect(q, isSuggestion = false) {
+            if (!q || q.trim() === '') return [];
+            if (!isSuggestion) el.loadingOverlay.classList.remove('hidden');
+            
+            try {
+                const sRes = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
+                const sData = await sRes.json();
+                if (!sData.items) return [];
+
+                const ids = sData.items.map(i => i.id.videoId).join(',');
+                const vRes = await fetch(`${API_VIDEOS}?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`);
+                const vData = await vRes.json();
+
+                const results = sData.items.map(item => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                    channel: item.snippet.channelTitle,
+                    thumb: item.snippet.thumbnails.high.url,
+                    duration: formatDur(vData.items?.find(x => x.id === item.id.videoId)?.contentDetails?.duration)
+                }));
+
+                if (!isSuggestion) {
+                    currentSearchResults = results;
+                    el.pageTitle.textContent = `Kết quả cho "${q}"`;
+                    renderHomePage(results);
+                    showPage('home');
+                }
+                return results;
+            } catch (err) {
+                console.error('Lỗi tìm kiếm:', err);
+                return [];
+            } finally {
+                if (!isSuggestion) el.loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function search(q) {
+            if (!q || q.trim() === '') return;
+            searchDirect(q, false);
+        }
+
+        // Tải gợi ý trang chủ
+        async function loadSuggestions() {
+            el.loadingOverlay.classList.remove('hidden');
+            try {
+                const randomKeyword = SUGGESTED_KEYWORDS[Math.floor(Math.random() * SUGGESTED_KEYWORDS.length)];
+                const results = await searchDirect(randomKeyword, true);
+                if (results.length) {
+                    currentSearchResults = results;
+                    renderHomePage(results);
+                }
+            } catch (err) {
+                console.error('Lỗi tải gợi ý:', err);
+                el.videoGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-8">Không tải được gợi ý, vui lòng tìm kiếm thủ công</p>`;
+            } finally {
+                el.loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        // Tải gợi ý bên phải khi đang phát
+        async function loadSideSuggestions(currentTitle) {
+            try {
+                // Tìm gợi ý liên quan đến bài đang phát
+                const q = currentTitle.split(' - ')[0].substring(0, 30);
+                const results = await searchDirect(q + ' nhạc', true);
+                // Lọc bỏ bài đang phát
+                suggestedList = results.filter(v => !playlist.length || v.id !== playlist[currentIdx]?.id).slice(0, 8);
+                renderSuggestedList();
+            } catch (err) {
+                el.suggestedList.innerHTML = `<p class="text-grayText text-sm py-4 text-center">Không có gợi ý</p>`;
+            }
+        }
+
+        // ==================== HIỂN THỊ DANH SÁCH ====================
+        function renderHomePage(list) {
+            el.videoGrid.innerHTML = '';
+            list.forEach(v => {
+                const card = document.createElement('div');
+                card.className = 'cursor-pointer card-hover transition-all duration-200';
+                card.innerHTML = `
+                    <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
+                        <img src="${v.thumb}" alt="${v.title}" loading="lazy" class="w-full h-full object-cover">
+                        <span class="absolute bottom-2 right-2 bg-black/80 text-xs px-1.5 py-0.5 rounded">${v.duration}</span>
+                    </div>
+                    <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
+                    <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
+                `;
+                card.onclick = () => {
+                    if (!playlist.some(x => x.id === v.id)) playlist.push(v);
+                    playAt(playlist.length - 1);
+                };
+                el.videoGrid.appendChild(card);
+            });
+        }
+
+        function renderSuggestedList() {
+            if (!suggestedList.length) {
+                el.suggestedList.innerHTML = `<p class="text-grayText text-sm py-4 text-center">Không có gợi ý</p>`;
+                return;
+            }
+            el.suggestedList.innerHTML = '';
+            suggestedList.forEach(v => {
+                const item = document.createElement('div');
+                item.className = 'suggest-item flex items-center gap-2 sm:gap-3 p-2 rounded-lg cursor-pointer transition';
+                item.innerHTML = `
+                    <img src="${v.thumb}" alt="" class="w-20 h-12 sm:w-24 sm:h-14 rounded object-cover shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-sm font-medium line-clamp-2">${v.title}</h4>
+                        <p class="text-xs text-grayText mt-0.5">${v.channel}</p>
+                    </div>
+                    <span class="text-xs text-grayText shrink-0">${v.duration}</span>
+                `;
+                item.onclick = () => {
+                    if (!playlist.some(x => x.id === v.id)) playlist.push(v);
+                    playAt(playlist.length - 1);
+                };
+                el.suggestedList.appendChild(item);
+            });
+        }
+
         // ==================== CHUYỂN TRANG ====================
         function showPage(page) {
             el.homePage.classList.toggle('hidden', page !== 'home');
@@ -511,25 +557,25 @@
             currentIdx = idx;
             const v = playlist[idx];
 
-            console.log('▶️ Chuẩn bị phát:', v.title);
+            console.log('▶️ Phát:', v.title);
 
             el.watchTitle.textContent = v.title;
             el.watchChannel.textContent = v.channel;
             
-            if (isReady) { 
-                console.log('✅ Trình phát sẵn sàng → phát ngay');
+            if (isReady) {
+                el.playerLoading.classList.remove('hidden');
+                el.youtubePlayer.classList.remove('ready');
                 player.loadVideoById({ videoId: v.id, suggestedQuality: 'hd720' });
-                player.playVideo(); 
+                player.playVideo();
             } else {
-                console.log('⏳ Trình phát chưa sẵn sàng → lưu lại để phát sau');
                 pendingVideoId = v.id;
                 el.playerLoading.classList.remove('hidden');
                 el.youtubePlayer.classList.remove('ready');
             }
             
-            renderRelatedList();
             updateLikeButton();
             showPage('watch');
+            loadSideSuggestions(v.title); // Tải gợi ý bên phải
         }
 
         function playNext() {
@@ -572,35 +618,6 @@
                 el.watchTotal.textContent = fmtTime(d);
             }
             if (isPlaying) requestAnimationFrame(updateTime);
-        }
-
-        function renderRelatedList() {
-            el.relatedList.innerHTML = '';
-            playlist.forEach((item, i) => {
-                const active = i === currentIdx;
-                const div = document.createElement('div');
-                div.className = `flex items-center gap-2 sm:gap-3 p-2 rounded-lg transition ${active ? 'bg-hoverGray' : 'hover:bg-hoverGray/50'}`;
-                div.innerHTML = `
-                    <div class="w-5 text-center text-sm ${active && isPlaying ? 'text-red' : 'text-grayText'}">
-                        ${active && isPlaying ? '<div class="playing-animation"><span></span><span></span><span></span></div>' : i+1}
-                    </div>
-                    <img src="${item.thumb}" alt="" class="w-14 h-8 sm:w-16 sm:h-9 rounded object-cover">
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-medium line-clamp-2 ${active ? 'text-red' : ''}">${item.title}</h4>
-                        <p class="text-xs text-grayText mt-0.5">${item.channel}</p>
-                    </div>
-                    <button class="del-btn text-grayText hover:text-red p-1"><i class="fa fa-times"></i></button>
-                `;
-                div.onclick = e => !e.target.closest('.del-btn') && playAt(i);
-                div.querySelector('.del-btn').onclick = e => {
-                    e.stopPropagation();
-                    playlist.splice(i, 1);
-                    if (i === currentIdx && playlist.length) playAt(Math.min(i, playlist.length-1));
-                    else if (currentIdx >= i) currentIdx--;
-                    renderRelatedList();
-                };
-                el.relatedList.appendChild(div);
-            });
         }
 
         // ==================== YÊU THÍCH ====================
@@ -652,7 +669,6 @@
             
             el.logoLink.onclick = el.homeLink.onclick = e => {
                 e.preventDefault();
-                if (currentSearchResults.length) renderHomePage(currentSearchResults);
                 showPage('home');
             };
             el.favPageLink.onclick = el.favBtn.onclick = e => { e.preventDefault(); showFavorites(); };
@@ -690,7 +706,7 @@
         // ==================== KHỞI TẠO ====================
         loadAPI();
         setupEvents();
-        loadSuggestions(); // Tải danh sách gợi ý ngay khi mở webapp
+        loadSuggestions();
     </script>
 </body>
 </html>

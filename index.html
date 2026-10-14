@@ -27,6 +27,10 @@
                         'car': '800px',
                         'ipad': '1024px',
                         'wide': '1440px'
+                    },
+                    width: {
+                        'sidebar-narrow': '72px',
+                        'sidebar-wide': '200px'
                     }
                 }
             }
@@ -45,7 +49,7 @@
             pointer-events: auto !important;
             user-select: text !important;
             -webkit-user-select: text !important;
-            font-size: 16px !important; /* Ngăn tự phóng to màn hình trên iOS */
+            font-size: 16px !important;
         }
         .progress-bar { 
             -webkit-appearance: none; 
@@ -75,27 +79,64 @@
         .playing-animation span:nth-child(2) { animation-delay: 0.15s; }
         .playing-animation span:nth-child(3) { animation-delay: 0.3s; }
         @keyframes playing { from { height: 6px; } to { height: 18px; } }
-        #youtube-player { 
-            width: 100%; 
+        .player-wrapper {
+            position: relative;
+            width: 100%;
             aspect-ratio: 16/9;
             border-radius: 12px;
             overflow: hidden;
-            background: #000;
+            background: #1a1a1a;
+        }
+        #youtube-player { 
+            width: 100%; 
+            height: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        #youtube-player.ready {
+            opacity: 1;
+        }
+        .player-loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            transition: opacity 0.3s ease;
+        }
+        .player-loading.hidden {
+            opacity: 0;
+            pointer-events: none;
         }
         .card-hover:hover { transform: scale(1.03); transition: transform 0.2s ease; }
-        .sidebar-link { transition: all 0.2s ease; }
-        .sidebar-link:hover, .sidebar-link.active { background-color: rgba(255,255,255,0.1); }
-        /* Ẩn thanh cuộn nhưng vẫn cuộn được */
+        .sidebar-link { 
+            transition: all 0.2s ease; 
+            flex-direction: column;
+            gap: 4px;
+            padding: 12px 8px;
+        }
+        .sidebar-link:hover, .sidebar-link.active { 
+            background-color: rgba(255,255,255,0.1); 
+            border-radius: 8px;
+        }
+        .sidebar-text {
+            font-size: 10px;
+            line-height: 1.2;
+        }
         .hide-scrollbar::-webkit-scrollbar { width: 4px; }
         .hide-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
-        /* Tối ưu cho màn hình xe */
-        @media (min-width: 1200px) and (max-height: 900px) {
-            .player-container { max-height: 70vh; }
-            .sidebar-link { padding: 10px 12px !important; }
-        }
-        /* Nút bấm lớn hơn trên màn hình xe */
         @media (min-width: 800px) {
             .btn-large { min-height: 44px; min-width: 44px; }
+            .sidebar-link {
+                flex-direction: row;
+                gap: 12px;
+                padding: 10px 12px;
+            }
+            .sidebar-text {
+                font-size: 14px;
+            }
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -103,7 +144,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-dark text-lightText font-sans antialiased h-screen flex flex-col">
-    <!-- Header Cố định - Tối ưu mọi màn hình -->
+    <!-- Header -->
     <header class="shrink-0 bg-dark z-50 px-3 sm:px-4 ipad:px-6 py-2 sm:py-3 flex items-center justify-between border-b border-gray-800/50">
         <div class="flex items-center gap-2 sm:gap-4">
             <button id="sidebarToggle" class="p-2 sm:p-3 hover:bg-darkGray rounded-full transition btn-large">
@@ -119,7 +160,7 @@
 
         <div class="flex-1 max-w-[480px] car:max-w-[640px] mx-2 sm:mx-4 relative z-10">
             <div class="relative flex">
-                <input type="text" id="searchInput" placeholder="Tìm kiếm bài hát..." 
+                <input type="text" id="searchInput" placeholder="Không có bài ưng ý? Tìm kiếm tại đây..." 
                     class="w-full px-3 sm:px-5 py-2 bg-darkGray border border-gray-700 rounded-l-full focus:outline-none focus:border-red text-sm sm:text-base"
                     autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 <button id="searchBtn" class="px-3 sm:px-6 bg-hoverGray border border-l-0 border-gray-700 rounded-r-full hover:bg-gray-600 transition btn-large">
@@ -140,41 +181,60 @@
 
     <!-- Bố cục chính -->
     <div class="flex flex-1 overflow-hidden">
-        <!-- Thanh bên trái - Tự ẩn trên điện thoại, mở rộng trên iPad/xe -->
-        <aside id="sidebar" class="w-60 sm:w-56 ipad:w-60 fixed sm:relative left-0 top-0 bottom-0 bg-dark overflow-y-auto hide-scrollbar transition-all duration-300 z-40 -translate-x-full sm:translate-x-0">
+        <!-- Thanh bên trái - Thu nhỏ -->
+        <aside id="sidebar" class="w-sidebar-narrow sm:w-sidebar-wide fixed sm:relative left-0 top-0 bottom-0 bg-dark overflow-y-auto hide-scrollbar transition-all duration-300 z-40">
             <div class="p-2 pt-4">
-                <ul class="space-y-1">
-                    <li><a href="#" id="homeLink" class="sidebar-link active flex items-center gap-4 px-3 py-2.5 rounded-lg btn-large"><i class="fa fa-home w-5 text-center"></i><span>Trang chủ</span></a></li>
-                    <li><a href="#" id="favPageLink" class="sidebar-link flex items-center gap-4 px-3 py-2.5 rounded-lg btn-large"><i class="fa fa-heart w-5 text-center"></i><span>Yêu thích</span></a></li>
-                    <li><a href="#" id="queuePageLink" class="sidebar-link flex items-center gap-4 px-3 py-2.5 rounded-lg btn-large"><i class="fa fa-list w-5 text-center"></i><span>Danh sách phát</span></a></li>
+                <ul class="space-y-2">
+                    <li>
+                        <a href="#" id="homeLink" class="sidebar-link active flex items-center justify-center sm:justify-start rounded-lg btn-large">
+                            <i class="fa fa-home w-5 text-center text-lg"></i>
+                            <span class="sidebar-text hidden sm:inline">Trang chủ</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="favPageLink" class="sidebar-link flex items-center justify-center sm:justify-start rounded-lg btn-large">
+                            <i class="fa fa-heart w-5 text-center text-lg"></i>
+                            <span class="sidebar-text hidden sm:inline">Yêu thích</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" id="queuePageLink" class="sidebar-link flex items-center justify-center sm:justify-start rounded-lg btn-large">
+                            <i class="fa fa-list w-5 text-center text-lg"></i>
+                            <span class="sidebar-text hidden sm:inline">Danh sách phát</span>
+                        </a>
+                    </li>
                 </ul>
             </div>
         </aside>
 
-        <!-- Lớp che khi mở menu trên điện thoại -->
         <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 z-30 hidden sm:hidden" onclick="toggleSidebar()"></div>
 
-        <!-- Nội dung chính - Tự điều chỉnh lưới theo màn hình -->
-        <main id="mainContent" class="flex-1 overflow-y-auto hide-scrollbar p-3 sm:p-4 ipad:p-6 pb-24">
-            <!-- Trang chủ - Lưới tự điều chỉnh -->
+        <!-- Nội dung chính -->
+        <main id="mainContent" class="flex-1 overflow-y-auto hide-scrollbar p-3 sm:p-4 ipad:p-6">
+            <!-- Trang chủ - Hiển thị sẵn bài gợi ý -->
             <section id="homePage">
-                <h2 id="pageTitle" class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Tìm kiếm bài hát</h2>
+                <h2 id="pageTitle" class="text-lg sm:text-xl font-bold mb-2">🎵 Gợi ý nghe nhạc</h2>
+                <p class="text-grayText text-sm mb-4">Chọn bài yêu thích để nghe ngay • Nếu không có bài phù hợp, dùng thanh tìm kiếm bên trên</p>
                 <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 car:grid-cols-3 ipad:grid-cols-4 wide:grid-cols-5 gap-3 sm:gap-4">
-                    <p class="col-span-full text-grayText text-center py-12">Nhập từ khóa ở trên để tìm kiếm bài hát trên YouTube</p>
+                    <!-- Sẽ tự động điền danh sách gợi ý khi mở trang -->
                 </div>
             </section>
 
-            <!-- Trang phát nhạc - Tối ưu bố cục ngang/dọc -->
+            <!-- Trang phát nhạc -->
             <section id="watchPage" class="hidden">
-                <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
-                    <!-- Cột trái: Video + Điều khiển chính -->
-                    <div class="flex-1 player-container">
-                        <div id="youtube-player" class="mb-3 sm:mb-4"></div>
+                <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
+                    <div class="flex-1 flex flex-col">
+                        <div class="player-wrapper mb-3 sm:mb-4">
+                            <div id="playerLoading" class="player-loading">
+                                <i class="fa fa-spinner fa-spin fa-3x text-red mb-3"></i>
+                                <p class="text-grayText">Đang tải trình phát...</p>
+                            </div>
+                            <div id="youtube-player"></div>
+                        </div>
                         
                         <h1 id="watchTitle" class="text-lg sm:text-xl ipad:text-2xl font-bold mb-2 line-clamp-2">Tên bài hát</h1>
                         <p id="watchChannel" class="text-grayText mb-3 sm:mb-4 text-sm">Tên kênh / Nghệ sĩ</p>
                         
-                        <!-- Thanh tiến độ -->
                         <div class="mb-3 sm:mb-4">
                             <input type="range" id="watchProgress" class="progress-bar" min="0" max="100" value="0">
                             <div class="flex justify-between text-xs sm:text-sm text-grayText mt-1">
@@ -183,7 +243,6 @@
                             </div>
                         </div>
                         
-                        <!-- Nút điều khiển chính - Lớn, dễ chạm trên mọi thiết bị -->
                         <div class="flex items-center justify-center gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
                             <button id="watchShuffle" class="text-grayText hover:text-white transition btn-large p-2">
                                 <i class="fa fa-random fa-lg"></i>
@@ -202,8 +261,7 @@
                             </button>
                         </div>
                         
-                        <!-- Nút hành động -->
-                        <div class="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
+                        <div class="flex flex-wrap gap-2 sm:gap-3">
                             <button id="watchLike" class="flex items-center gap-2 px-3 sm:px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition btn-large">
                                 <i class="fa fa-heart-o"></i>
                                 <span class="text-sm">Yêu thích</span>
@@ -215,10 +273,9 @@
                         </div>
                     </div>
                     
-                    <!-- Cột phải: Danh sách phát - Luôn hiển thị trên màn rộng, cuộn riêng -->
-                    <div class="w-full lg:w-[360px] xl:w-[420px] shrink-0">
+                    <div class="w-full lg:w-[340px] xl:w-[400px] shrink-0 flex flex-col">
                         <h3 class="font-bold mb-2 sm:mb-3">Danh sách phát</h3>
-                        <div id="relatedList" class="space-y-2 sm:space-y-3 max-h-[50vh] lg:max-h-[70vh] overflow-y-auto hide-scrollbar">
+                        <div id="relatedList" class="space-y-2 sm:space-y-3 flex-1 overflow-y-auto hide-scrollbar">
                             <p class="text-grayText text-sm py-4 text-center">Chưa có bài hát nào</p>
                         </div>
                     </div>
@@ -227,36 +284,6 @@
         </main>
     </div>
 
-    <!-- Thanh phát nhỏ dưới cùng - Luôn hiển thị khi phát -->
-    <div id="miniPlayer" class="fixed bottom-0 left-0 right-0 bg-darkGray border-t border-gray-700 px-3 sm:px-4 py-2 sm:py-3 z-50 transform translate-y-full transition-transform duration-300">
-        <div class="flex items-center justify-between gap-2 sm:gap-3">
-            <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <img id="miniThumb" src="" alt="" class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover bg-gray-700 shrink-0">
-                <div class="min-w-0">
-                    <h4 id="miniTitle" class="font-medium truncate text-sm">Tên bài hát</h4>
-                    <p id="miniChannel" class="text-xs text-grayText truncate">Nghệ sĩ</p>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-2 sm:gap-3">
-                <button id="miniPrev" class="text-grayText hover:text-white transition btn-large p-1 sm:p-2"><i class="fa fa-step-backward"></i></button>
-                <button id="miniPlayPause" class="w-9 h-9 sm:w-10 sm:h-10 bg-red rounded-full flex items-center justify-center text-white btn-large">
-                    <i class="fa fa-play ml-0.5"></i>
-                </button>
-                <button id="miniNext" class="text-grayText hover:text-white transition btn-large p-1 sm:p-2"><i class="fa fa-step-forward"></i></button>
-            </div>
-
-            <div class="hidden sm:flex items-center gap-2 sm:gap-3 flex-1 justify-end">
-                <span id="miniTime" class="text-xs text-grayText whitespace-nowrap">0:00 / 0:00</span>
-                <input type="range" id="miniProgress" class="progress-bar w-20 md:w-32" min="0" max="100" value="0">
-                <button id="miniExpand" class="text-grayText hover:text-white transition btn-large p-1">
-                    <i class="fa fa-chevron-up"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Loading -->
     <div id="loadingOverlay" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] hidden">
         <div class="text-center">
             <i class="fa fa-spinner fa-spin fa-3x text-red"></i>
@@ -270,12 +297,26 @@
         const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
         const API_VIDEOS = "https://www.googleapis.com/youtube/v3/videos";
 
+        // ==================== DANH SÁCH GỢI Ý KHI MỞ WEBAPP ====================
+        const SUGGESTED_KEYWORDS = [
+            "nhạc vàng bolero hay nhất",
+            "lk bolero trữ tình 2026",
+            "nhạc vàng xưa chọn lọc",
+            "nhạc trữ tình tây nguyên",
+            "nhạc nhẹ êm dịu thư giãn",
+            "nhạc quê hương bolero",
+            "giọng ca cực êm nhạc vàng",
+            "liên khúc nhạc vàng không lời dừng"
+        ];
+
         // ==================== TRẠNG THÁI ====================
         let player = null, isReady = false;
         let playlist = [], currentIdx = -1;
         let isShuffle = false, repeatMode = 0, isPlaying = false;
         let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
         let currentSearchResults = [];
+        let pendingVideoId = null;
+        let sidebarCollapsed = false;
 
         // ==================== PHẦN TỬ ====================
         const el = {
@@ -293,6 +334,8 @@
             favBtn: document.getElementById('favBtn'),
             homePage: document.getElementById('homePage'),
             watchPage: document.getElementById('watchPage'),
+            playerLoading: document.getElementById('playerLoading'),
+            youtubePlayer: document.getElementById('youtube-player'),
             watchTitle: document.getElementById('watchTitle'),
             watchChannel: document.getElementById('watchChannel'),
             watchProgress: document.getElementById('watchProgress'),
@@ -304,32 +347,98 @@
             watchShuffle: document.getElementById('watchShuffle'),
             watchRepeat: document.getElementById('watchRepeat'),
             watchLike: document.getElementById('watchLike'),
-            relatedList: document.getElementById('relatedList'),
-            miniPlayer: document.getElementById('miniPlayer'),
-            miniThumb: document.getElementById('miniThumb'),
-            miniTitle: document.getElementById('miniTitle'),
-            miniChannel: document.getElementById('miniChannel'),
-            miniPlayPause: document.getElementById('miniPlayPause'),
-            miniPrev: document.getElementById('miniPrev'),
-            miniNext: document.getElementById('miniNext'),
-            miniProgress: document.getElementById('miniProgress'),
-            miniTime: document.getElementById('miniTime'),
-            miniExpand: document.getElementById('miniExpand')
+            relatedList: document.getElementById('relatedList')
         };
 
         // ==================== MENU THAN BÊN ====================
         function toggleSidebar() {
-            const isOpen = el.sidebar.classList.contains('-translate-x-full');
-            el.sidebar.classList.toggle('-translate-x-full', !isOpen);
-            el.sidebarOverlay.classList.toggle('hidden', !isOpen);
+            sidebarCollapsed = !sidebarCollapsed;
+            if (sidebarCollapsed) {
+                el.sidebar.classList.remove('sm:w-sidebar-wide');
+                el.sidebar.classList.add('w-sidebar-narrow');
+            } else {
+                el.sidebar.classList.remove('w-sidebar-narrow');
+                el.sidebar.classList.add('sm:w-sidebar-wide');
+            }
         }
 
-        // Tự đóng menu khi chọn trên điện thoại
-        function closeSidebarOnMobile() {
-            if (window.innerWidth < 640) {
-                el.sidebar.classList.add('-translate-x-full');
-                el.sidebarOverlay.classList.add('hidden');
+        // ==================== TẢI DANH SÁCH GỢI Ý KHI MỞ TRANG ====================
+        async function loadSuggestions() {
+            el.loadingOverlay.classList.remove('hidden');
+            try {
+                // Lấy kết quả cho từ khóa đầu tiên, sau đó gộp thêm kết hợp
+                const randomKeyword = SUGGESTED_KEYWORDS[Math.floor(Math.random() * SUGGESTED_KEYWORDS.length)];
+                await searchDirect(randomKeyword, true); // true = là gợi ý trang chủ
+            } catch (err) {
+                console.error('Lỗi tải gợi ý:', err);
+                el.videoGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-8">Không tải được gợi ý, vui lòng tìm kiếm thủ công</p>`;
+            } finally {
+                el.loadingOverlay.classList.add('hidden');
             }
+        }
+
+        // Tìm kiếm trực tiếp (dành cho gợi ý và tìm kiếm bình thường)
+        async function searchDirect(q, isSuggestion = false) {
+            if (!q || q.trim() === '') return;
+            if (!isSuggestion) el.loadingOverlay.classList.remove('hidden');
+            
+            try {
+                const sRes = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
+                const sData = await sRes.json();
+                if (!sData.items) throw Error('Không có kết quả');
+
+                const ids = sData.items.map(i => i.id.videoId).join(',');
+                const vRes = await fetch(`${API_VIDEOS}?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`);
+                const vData = await vRes.json();
+
+                currentSearchResults = sData.items.map(item => ({
+                    id: item.id.videoId,
+                    title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                    channel: item.snippet.channelTitle,
+                    thumb: item.snippet.thumbnails.high.url,
+                    duration: formatDur(vData.items?.find(x => x.id === item.id.videoId)?.contentDetails?.duration)
+                }));
+
+                if (!isSuggestion) {
+                    el.pageTitle.textContent = `Kết quả cho "${q}"`;
+                }
+                renderHomePage(currentSearchResults);
+                showPage('home');
+            } catch (err) {
+                console.error('Lỗi tìm kiếm:', err);
+                if (!isSuggestion) {
+                    el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
+                }
+            } finally {
+                if (!isSuggestion) el.loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        // Tìm kiếm theo yêu cầu người dùng
+        function search(q) {
+            if (!q || q.trim() === '') return;
+            searchDirect(q, false);
+        }
+
+        function renderHomePage(list) {
+            el.videoGrid.innerHTML = '';
+            list.forEach(v => {
+                const card = document.createElement('div');
+                card.className = 'cursor-pointer card-hover transition-all duration-200';
+                card.innerHTML = `
+                    <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
+                        <img src="${v.thumb}" alt="${v.title}" loading="lazy" class="w-full h-full object-cover">
+                        <span class="absolute bottom-2 right-2 bg-black/80 text-xs px-1.5 py-0.5 rounded">${v.duration}</span>
+                    </div>
+                    <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
+                    <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
+                `;
+                card.onclick = () => {
+                    if (!playlist.some(x => x.id === v.id)) playlist.push(v);
+                    playAt(playlist.length - 1);
+                };
+                el.videoGrid.appendChild(card);
+            });
         }
 
         // ==================== TẢI API YOUTUBE ====================
@@ -340,17 +449,33 @@
         }
 
         window.onYouTubeIframeAPIReady = function() {
+            console.log('📌 Bắt đầu khởi tạo trình phát...');
             player = new YT.Player('youtube-player', {
-                height: '360',
-                width: '640',
+                height: '100%',
+                width: '100%',
                 playerVars: { 
                     autoplay: 0, controls: 1, enablejsapi: 1,
                     origin: location.origin, rel: 0, showinfo: 0, modestbranding: 1
                 },
                 events: {
-                    onReady: e => { isReady = true; e.target.setVolume(75); },
+                    onReady: e => {
+                        console.log('✅ Trình phát đã sẵn sàng');
+                        isReady = true;
+                        e.target.setVolume(75);
+                        el.youtubePlayer.classList.add('ready');
+                        el.playerLoading.classList.add('hidden');
+                        if (pendingVideoId) {
+                            console.log('▶️ Phát bài đang chờ:', pendingVideoId);
+                            player.loadVideoById({ videoId: pendingVideoId, suggestedQuality: 'hd720' });
+                            player.playVideo();
+                            pendingVideoId = null;
+                        }
+                    },
                     onStateChange: handleState,
-                    onError: () => setTimeout(playNext, 1500)
+                    onError: (e) => {
+                        console.error('❌ Lỗi phát:', e.data);
+                        setTimeout(playNext, 1500);
+                    }
                 }
             });
         };
@@ -372,65 +497,12 @@
             }
         }
 
-        // ==================== TÌM KIẾM ====================
-        async function search(q) {
-            if (!q || q.trim() === '') return;
-            el.loadingOverlay.classList.remove('hidden');
-            try {
-                const sRes = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q + ' nhạc')}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
-                const sData = await sRes.json();
-                if (!sData.items) throw Error('Không có kết quả');
-
-                const ids = sData.items.map(i => i.id.videoId).join(',');
-                const vRes = await fetch(`${API_VIDEOS}?part=contentDetails&id=${ids}&key=${YOUTUBE_API_KEY}`);
-                const vData = await vRes.json();
-
-                currentSearchResults = sData.items.map(item => ({
-                    id: item.id.videoId,
-                    title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-                    channel: item.snippet.channelTitle,
-                    thumb: item.snippet.thumbnails.high.url,
-                    duration: formatDur(vData.items?.find(x => x.id === item.id.videoId)?.contentDetails?.duration)
-                }));
-
-                el.pageTitle.textContent = `Kết quả cho "${q}"`;
-                renderHomePage(currentSearchResults);
-                showPage('home');
-            } catch (err) {
-                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
-            } finally {
-                el.loadingOverlay.classList.add('hidden');
-            }
-        }
-
-        function renderHomePage(list) {
-            el.videoGrid.innerHTML = '';
-            list.forEach(v => {
-                const card = document.createElement('div');
-                card.className = 'cursor-pointer card-hover transition-all duration-200';
-                card.innerHTML = `
-                    <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
-                        <img src="${v.thumb}" alt="" class="w-full h-full object-cover">
-                        <span class="absolute bottom-2 right-2 bg-black/80 text-xs px-1.5 py-0.5 rounded">${v.duration}</span>
-                    </div>
-                    <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
-                    <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
-                `;
-                card.onclick = () => {
-                    if (!playlist.some(x => x.id === v.id)) playlist.push(v);
-                    playAt(playlist.length - 1);
-                };
-                el.videoGrid.appendChild(card);
-            });
-        }
-
         // ==================== CHUYỂN TRANG ====================
         function showPage(page) {
             el.homePage.classList.toggle('hidden', page !== 'home');
             el.watchPage.classList.toggle('hidden', page !== 'watch');
             [el.homeLink, el.favPageLink].forEach(link => link.classList.remove('active'));
             if (page === 'home') el.homeLink.classList.add('active');
-            closeSidebarOnMobile();
         }
 
         // ==================== PHÁT NHẠC ====================
@@ -439,18 +511,22 @@
             currentIdx = idx;
             const v = playlist[idx];
 
+            console.log('▶️ Chuẩn bị phát:', v.title);
+
             el.watchTitle.textContent = v.title;
             el.watchChannel.textContent = v.channel;
-            el.miniThumb.src = v.thumb;
-            el.miniTitle.textContent = v.title;
-            el.miniChannel.textContent = v.channel;
             
             if (isReady) { 
+                console.log('✅ Trình phát sẵn sàng → phát ngay');
                 player.loadVideoById({ videoId: v.id, suggestedQuality: 'hd720' });
                 player.playVideo(); 
+            } else {
+                console.log('⏳ Trình phát chưa sẵn sàng → lưu lại để phát sau');
+                pendingVideoId = v.id;
+                el.playerLoading.classList.remove('hidden');
+                el.youtubePlayer.classList.remove('ready');
             }
             
-            el.miniPlayer.classList.remove('translate-y-full');
             renderRelatedList();
             updateLikeButton();
             showPage('watch');
@@ -485,19 +561,15 @@
         function updatePlayButtons() {
             const icon = isPlaying ? 'fa-pause' : 'fa-play';
             el.watchPlayPause.innerHTML = `<i class="fa ${icon} ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>`;
-            el.miniPlayPause.innerHTML = `<i class="fa ${icon} ml-0.5"></i>`;
         }
 
         function updateTime() {
             if (!isReady) return;
             const t = player.getCurrentTime(), d = player.getDuration();
             if (d) {
-                const pct = (t / d) * 100;
-                el.watchProgress.value = pct;
-                el.miniProgress.value = pct;
+                el.watchProgress.value = (t / d) * 100;
                 el.watchCurrent.textContent = fmtTime(t);
                 el.watchTotal.textContent = fmtTime(d);
-                el.miniTime.textContent = `${fmtTime(t)} / ${fmtTime(d)}`;
             }
             if (isPlaying) requestAnimationFrame(updateTime);
         }
@@ -585,9 +657,9 @@
             };
             el.favPageLink.onclick = el.favBtn.onclick = e => { e.preventDefault(); showFavorites(); };
             
-            el.watchPlayPause.onclick = el.miniPlayPause.onclick = togglePlay;
-            el.watchNext.onclick = el.miniNext.onclick = playNext;
-            el.watchPrev.onclick = el.miniPrev.onclick = playPrev;
+            el.watchPlayPause.onclick = togglePlay;
+            el.watchNext.onclick = playNext;
+            el.watchPrev.onclick = playPrev;
             
             el.watchShuffle.onclick = () => {
                 isShuffle = !isShuffle;
@@ -600,24 +672,25 @@
                 el.watchRepeat.classList.toggle('text-grayText', repeatMode === 0);
             };
             
-            el.watchProgress.oninput = el.miniProgress.oninput = function() {
+            el.watchProgress.oninput = function() {
                 if (!isReady) return;
-                const d = player.getDuration();
-                player.seekTo((this.value / 100) * d);
+                player.seekTo((this.value / 100) * player.getDuration());
             };
             
             el.watchLike.onclick = toggleLike;
-            el.miniExpand.onclick = () => showPage('watch');
             
             // Phát ngầm CarPlay
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && isPlaying && player) player.playVideo();
+                if (!document.hidden && isPlaying && isReady && player) {
+                    player.playVideo();
+                }
             });
         }
 
         // ==================== KHỞI TẠO ====================
         loadAPI();
         setupEvents();
+        loadSuggestions(); // Tải danh sách gợi ý ngay khi mở webapp
     </script>
 </body>
 </html>

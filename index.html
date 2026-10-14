@@ -64,13 +64,13 @@
         .playing-animation span:nth-child(2) { animation-delay: 0.15s; }
         .playing-animation span:nth-child(3) { animation-delay: 0.3s; }
         @keyframes playing { from { height: 6px; } to { height: 18px; } }
+        /* Khung trình phát - hiển thị bình thường, không ẩn hoàn toàn nữa */
         #youtube-player { 
-            position: absolute; 
-            opacity: 0; 
-            pointer-events: none; 
-            width: 1px; 
-            height: 1px; 
-            z-index: 1;
+            width: 100%; 
+            aspect-ratio: 16/9;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
         }
         .card-hover:hover { transform: scale(1.03); transition: transform 0.2s ease; }
         .sidebar-link:hover { background-color: rgba(255,255,255,0.1); }
@@ -83,9 +83,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-dark text-lightText font-sans antialiased overflow-x-hidden">
-    <!-- YouTube Player ẩn - Phát nền, không hiển thị quảng cáo -->
-    <div id="youtube-player"></div>
-
     <!-- Header Cố định -->
     <header class="fixed top-0 left-0 right-0 bg-dark z-50 px-4 md:px-6 py-3 flex items-center justify-between border-b border-gray-800/50">
         <div class="flex items-center gap-4">
@@ -152,13 +149,11 @@
                 <div class="flex flex-col lg:flex-row gap-6">
                     <!-- Cột trái: Phát nhạc chính -->
                     <div class="flex-1">
-                        <!-- Khung ảnh bìa thay vì video - không hiển thị quảng cáo -->
-                        <div class="w-full aspect-video rounded-xl overflow-hidden bg-darkGray mb-4">
-                            <img id="watchThumb" src="" alt="" class="w-full h-full object-cover">
-                        </div>
+                        <!-- Khung trình phát YouTube hiển thị bình thường -->
+                        <div id="youtube-player"></div>
                         
                         <!-- Thông tin bài hát -->
-                        <h1 id="watchTitle" class="text-xl md:text-2xl font-bold mb-2 line-clamp-2">Tên bài hát</h1>
+                        <h1 id="watchTitle" class="text-xl md:text-2xl font-bold mt-4 mb-2 line-clamp-2">Tên bài hát</h1>
                         <p id="watchChannel" class="text-grayText mb-4">Tên kênh / Nghệ sĩ</p>
                         
                         <!-- Thanh tiến độ -->
@@ -288,7 +283,6 @@
             homePage: document.getElementById('homePage'),
             watchPage: document.getElementById('watchPage'),
             
-            watchThumb: document.getElementById('watchThumb'),
             watchTitle: document.getElementById('watchTitle'),
             watchChannel: document.getElementById('watchChannel'),
             watchProgress: document.getElementById('watchProgress'),
@@ -314,7 +308,7 @@
             miniExpand: document.getElementById('miniExpand')
         };
 
-        // ==================== TẢI API YOUTUBE - TRÌNH PHÁT ẨN KHÔNG HIỂN THỊ QUẢNG CÁO ====================
+        // ==================== TẢI API YOUTUBE - TRÌNH PHÁT HIỂN THỊ BÌNH THƯỜNG ====================
         function loadAPI() {
             const s = document.createElement('script');
             s.src = "https://www.youtube.com/iframe_api";
@@ -323,10 +317,11 @@
 
         window.onYouTubeIframeAPIReady = function() {
             player = new YT.Player('youtube-player', {
-                height: '1', width: '1',
+                height: '360',
+                width: '640',
                 playerVars: { 
                     autoplay: 0, 
-                    controls: 0, 
+                    controls: 1,       // Hiển thị nút điều khiển YouTube
                     enablejsapi: 1, 
                     origin: location.origin,
                     rel: 0,
@@ -334,14 +329,22 @@
                     modestbranding: 1
                 },
                 events: {
-                    onReady: e => { isReady = true; e.target.setVolume(75); },
+                    onReady: e => { 
+                        isReady = true; 
+                        e.target.setVolume(75); 
+                        console.log('✅ Trình phát YouTube đã sẵn sàng');
+                    },
                     onStateChange: handleState,
-                    onError: () => setTimeout(playNext, 1500)
+                    onError: (e) => {
+                        console.error('❌ Lỗi phát:', e.data);
+                        setTimeout(playNext, 1500);
+                    }
                 }
             });
         };
 
         function handleState(e) {
+            console.log('📌 Trạng thái phát:', e.data);
             switch (e.data) {
                 case YT.PlayerState.PLAYING:
                     isPlaying = true;
@@ -387,8 +390,8 @@
                 renderHomePage(currentSearchResults);
                 showPage('home');
             } catch (err) {
-                console.error(err);
-                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm, vui lòng thử lại</p>`;
+                console.error('Lỗi tìm kiếm:', err);
+                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-12">Lỗi tìm kiếm: ${err.message}</p>`;
             } finally {
                 el.loadingOverlay.classList.add('hidden');
             }
@@ -430,8 +433,9 @@
             currentIdx = idx;
             const v = playlist[idx];
 
+            console.log('▶️ Phát:', v.title, 'ID:', v.id);
+
             // Cập nhật giao diện trang phát
-            el.watchThumb.src = v.thumb;
             el.watchTitle.textContent = v.title;
             el.watchChannel.textContent = v.channel;
             
@@ -441,8 +445,10 @@
             el.miniChannel.textContent = v.channel;
             
             if (isReady) { 
-                player.loadVideoById(v.id); 
+                player.loadVideoById({ videoId: v.id, suggestedQuality: 'hd720' });
                 player.playVideo(); 
+            } else {
+                console.warn('⏳ Trình phát chưa sẵn sàng');
             }
             
             el.miniPlayer.classList.remove('translate-y-full');
@@ -569,21 +575,20 @@
 
         // ==================== SỰ KIỆN ====================
         function setupEvents() {
-            // Sửa lỗi ô tìm kiếm không nhận gõ
-            el.searchInput.addEventListener('focus', function(e) {
+            // Ô tìm kiếm
+            el.searchInput.addEventListener('focus', function() {
                 this.style.pointerEvents = 'auto';
-                this.focus();
             });
             
-            el.searchBtn.addEventListener('click', function(e) {
+            el.searchBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 search(el.searchInput.value.trim());
             });
             
-            el.searchInput.addEventListener('keydown', function(e) {
+            el.searchInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    search(this.value.trim());
+                    search(el.searchInput.value.trim());
                 }
             });
             
@@ -628,9 +633,11 @@
             
             el.miniExpand.onclick = () => showPage('watch');
             
-            // Giữ phát ngầm trên CarPlay - không dừng khi chuyển ứng dụng
+            // Giữ phát ngầm trên CarPlay
             document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && isPlaying && player) player.playVideo();
+                if (!document.hidden && isPlaying && player) {
+                    player.playVideo();
+                }
             });
         }
 

@@ -132,7 +132,7 @@
 
     <!-- Bố cục chính - Tối ưu không gian -->
     <div class="flex flex-1 overflow-hidden">
-        <!-- Thanh bên trái - THU HẸP CHỈ HIỆN BIỂU TƯỢNG -->
+        <!-- Thanh bên trái - THU HẸP CHỈ HIỆN BIỂU TƯỢNG MẶC ĐỊNH -->
         <aside id="sidebar" class="w-sidebar-narrow sm:w-sidebar-wide fixed sm:relative left-0 top-0 bottom-0 bg-dark overflow-y-auto hide-scrollbar transition-all duration-300 z-40">
             <div class="p-2 pt-4">
                 <ul class="space-y-2">
@@ -165,7 +165,7 @@
                 </div>
             </section>
 
-            <!-- Trang phát nhạc - BỎ THANH DƯỚI, BỎ DANH SÁCH CŨ, THAY BẰNG GỢI Ý -->
+            <!-- Trang phát nhạc - TỐI ƯU DIỆN TÍCH, BỎ THANH DƯỚI, CỘT PHẢI LÀ GỢI Ý -->
             <section id="watchPage" class="hidden">
                 <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
                     <!-- Cột trái: Video chính - TỐI ĐA DIỆN TÍCH -->
@@ -192,21 +192,21 @@
                             </div>
                         </div>
                         
-                        <!-- Nút điều khiển chính - KHÔNG CÒN THANH DƯỚI -->
+                        <!-- Nút điều khiển chính - KHÔNG CÒN THANH PHÁT DƯỚI -->
                         <div class="flex items-center justify-center gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
-                            <button id="watchShuffle" class="text-grayText hover:text-white transition btn-large p-2">
+                            <button id="watchShuffle" class="text-grayText hover:text-white transition btn-large p-2" title="Xáo trộn">
                                 <i class="fa fa-random fa-lg"></i>
                             </button>
-                            <button id="watchPrev" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2">
+                            <button id="watchPrev" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2" title="Bài trước">
                                 <i class="fa fa-step-backward"></i>
                             </button>
-                            <button id="watchPlayPause" class="w-12 h-12 sm:w-14 sm:h-14 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg btn-large">
+                            <button id="watchPlayPause" class="w-12 h-12 sm:w-14 sm:h-14 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg btn-large" title="Phát/Tạm dừng">
                                 <i class="fa fa-play ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>
                             </button>
-                            <button id="watchNext" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2">
+                            <button id="watchNext" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2" title="Bài tiếp theo">
                                 <i class="fa fa-step-forward"></i>
                             </button>
-                            <button id="watchRepeat" class="text-grayText hover:text-white transition btn-large p-2">
+                            <button id="watchRepeat" class="text-grayText hover:text-white transition btn-large p-2" title="Lặp lại">
                                 <i class="fa fa-repeat fa-lg"></i>
                             </button>
                         </div>
@@ -240,16 +240,17 @@
 
     <script>
         // ==================== CẤU HÌNH ====================
+        // ⚠️ Điền khóa API YouTube của bạn vào dòng bên dưới
         const YOUTUBE_API_KEY = "AIzaSyCPZf8Kws-Czw-6AIoZebDO_XTeCSZ2ni0";
         const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
 
-        // ==================== DANH SÁCH GỢI Ý ====================
+        // ==================== DANH SÁCH GỢI Ý MẶC ĐỊNH ====================
         const SUGGESTED_KEYWORDS = [
             "nhạc vàng bolero hay nhất",
             "liên khúc bolero trữ tình",
             "nhạc vàng xưa chọn lọc",
             "nhạc nhẹ êm dịu thư giãn",
-            "nhạc trữ tình không lời dừng"
+            "nhạc trữ tình không lời"
         ];
 
         // ==================== TRẠNG THÁI ====================
@@ -257,6 +258,7 @@
         let isAPILoaded = false;
         let isPlayerReady = false;
         let playlist = [];
+        let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
         let currentIdx = -1;
         let isShuffle = false;
         let repeatMode = 0;
@@ -298,7 +300,7 @@
             suggestedList: document.getElementById('suggestedList')
         };
 
-        // ==================== MENU THAN BÊN - THU HẸP ====================
+        // ==================== MENU THAN BÊN - THU HẸP/MỞ RỘNG ====================
         function toggleSidebar() {
             sidebarCollapsed = !sidebarCollapsed;
             if (sidebarCollapsed) {
@@ -392,7 +394,7 @@
             setTimeout(playNext, 2000);
         }
 
-        // Cập nhật thời gian
+        // Cập nhật thời gian phát
         function startTimeUpdate() {
             stopTimeUpdate();
             timeUpdateInterval = setInterval(() => {
@@ -413,7 +415,7 @@
             }
         }
 
-        // ==================== TÌM KIẾM ====================
+        // ==================== TÌM KIẾM BÀI HÁT ====================
         async function searchDirect(q, isSuggestion = false) {
             if (!q || !q.trim()) return [];
             if (!isSuggestion) el.loadingOverlay.classList.remove('hidden');
@@ -439,6 +441,7 @@
                 return results;
             } catch (err) {
                 console.error('Lỗi tìm kiếm:', err);
+                if (!isSuggestion) alert('Không tìm thấy bài hát, kiểm tra khóa API');
                 return [];
             } finally {
                 if (!isSuggestion) el.loadingOverlay.classList.add('hidden');
@@ -457,7 +460,7 @@
             if (results.length) {
                 renderHomePage(results);
             } else {
-                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-8">Không tải được gợi ý, thử tìm kiếm thủ công</p>`;
+                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-8">Không tải được gợi ý, kiểm tra khóa API</p>`;
             }
         }
 
@@ -536,6 +539,7 @@
             }
             
             loadSideSuggestions(video.title);
+            updateLikeButton();
         }
 
         function actuallyPlayVideo(videoId) {
@@ -638,7 +642,7 @@
             
             el.watchLike.addEventListener('click', toggleLike);
             
-            // Phát ngầm CarPlay
+            // PHÁT NGẦM CARPLAY — tiếp tục phát khi chuyển ứng dụng
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden && isPlaying && isPlayerReady && player) {
                     player.playVideo();

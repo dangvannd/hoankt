@@ -1,659 +1,500 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="MusicPlay">
-    <meta name="format-detection" content="telephone=no">
-    <title>MusicPlay - Nghe Nhạc</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        dark: '#0F0F0F',
-                        darkGray: '#272727',
-                        hoverGray: '#3F3F3F',
-                        red: '#FF0000',
-                        lightText: '#F1F1F1',
-                        grayText: '#AAAAAA'
-                    },
-                    fontFamily: { sans: ['Roboto', 'Arial', 'sans-serif'] },
-                    screens: {
-                        'car': '800px',
-                        'ipad': '1024px',
-                        'wide': '1440px'
-                    },
-                    width: {
-                        'sidebar-narrow': '72px',
-                        'sidebar-wide': '200px'
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        * { 
-            -webkit-tap-highlight-color: transparent; 
-            box-sizing: border-box;
-        }
-        html, body {
-            height: 100%;
-            overflow: hidden;
-            margin: 0;
-        }
-        input, textarea {
-            font-size: 16px !important;
-        }
-        .progress-bar { 
-            -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; 
-            background: #444; cursor: pointer; width: 100%; 
-        }
-        .progress-bar::-webkit-slider-thumb { 
-            -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; 
-            background: #fff; cursor: pointer; 
-        }
-        .player-wrapper {
-            position: relative; width: 100%; aspect-ratio: 16/9; border-radius: 12px;
-            overflow: hidden; background: #000;
-        }
-        #youtube-player { 
-            width: 100%; height: 100%; border: none; display: block;
-        }
-        .player-loading {
-            position: absolute; inset: 0; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; background: #1a1a1a; z-index: 10;
-        }
-        .player-loading.hidden { opacity: 0; pointer-events: none; }
-        .card-hover:hover { transform: scale(1.03); transition: transform 0.2s ease; }
-        .sidebar-link { 
-            transition: all 0.2s ease; flex-direction: column; gap: 4px;
-            padding: 12px 8px;
-        }
-        .sidebar-link:hover, .sidebar-link.active { 
-            background-color: rgba(255,255,255,0.1); border-radius: 8px;
-        }
-        .sidebar-text { font-size: 10px; line-height: 1.2; }
-        .suggest-item:hover { background-color: rgba(255,255,255,0.08); }
-        .suggest-item.active { background-color: rgba(255,0,0,0.15); }
-        .hide-scrollbar::-webkit-scrollbar { width: 4px; }
-        .hide-scrollbar::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
-        .btn-large { min-height: 44px; min-width: 44px; }
-        @media (min-width: 800px) {
-            .sidebar-link {
-                flex-direction: row; gap: 12px; padding: 10px 12px;
-            }
-            .sidebar-text { font-size: 14px; }
-        }
-    </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-</head>
-<body class="bg-dark text-lightText font-sans antialiased h-screen flex flex-col">
-    <!-- Header -->
-    <header class="shrink-0 bg-dark z-50 px-3 sm:px-4 ipad:px-6 py-2 sm:py-3 flex items-center justify-between border-b border-gray-800/50">
-        <div class="flex items-center gap-2 sm:gap-4">
-            <button id="sidebarToggle" class="p-2 sm:p-3 hover:bg-darkGray rounded-full transition btn-large">
-                <i class="fa fa-bars text-base sm:text-lg"></i>
-            </button>
-            <a href="#" id="logoLink" class="flex items-center gap-1.5">
-                <div class="bg-red rounded-full w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center">
-                    <i class="fa fa-play text-white text-xs ml-0.5"></i>
-                </div>
-                <span class="font-bold text-lg sm:text-xl hidden sm:inline">MusicPlay</span>
-            </a>
-        </div>
+<script>
+    // ==================== CẤU HÌNH ====================
+    // ⚠️ Điền khóa API YouTube của bạn vào dòng bên dưới
+    const YOUTUBE_API_KEY = "AIzaSyCFDlmrjK9jeprzZLa3yJzxsLi1zYBNMWI";
+    const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
+    // ==================== DANH SÁCH GỢI Ý MẶC ĐỊNH ====================
+    const SUGGESTED_KEYWORDS = [
+        "nhạc vàng bolero hay nhất",
+        "liên khúc bolero trữ tình",
+        "nhạc vàng xưa chọn lọc",
+        "nhạc nhẹ êm dịu thư giãn",
+        "nhạc trữ tình không lời"
+    ];
+    // ==================== TRẠNG THÁI ====================
+    let player = null;
+    let isAPILoaded = false;
+    let isPlayerReady = false;
+    let playlist = [];
+    let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
+    let currentIdx = -1;
+    let isShuffle = false;
+    let repeatMode = 0;
+    let isPlaying = false;
+    let suggestedList = [];
+    let pendingVideoId = null;
+    let sidebarCollapsed = false;
+    let timeUpdateInterval = null;
+    let playerReadyTimeout = null;
+    // ==================== PHẦN TỬ ====================
+    const el = {
+        searchInput: document.getElementById('searchInput'),
+        searchBtn: document.getElementById('searchBtn'),
+        pageTitle: document.getElementById('pageTitle'),
+        videoGrid: document.getElementById('videoGrid'),
+        loadingOverlay: document.getElementById('loadingOverlay'),
+        sidebar: document.getElementById('sidebar'),
+        sidebarOverlay: document.getElementById('sidebarOverlay'),
+        sidebarToggle: document.getElementById('sidebarToggle'),
+        logoLink: document.getElementById('logoLink'),
+        homeLink: document.getElementById('homeLink'),
+        favPageLink: document.getElementById('favPageLink'),
+        favBtn: document.getElementById('favBtn'),
+        homePage: document.getElementById('homePage'),
+        watchPage: document.getElementById('watchPage'),
+        playerLoading: document.getElementById('playerLoading'),
+        youtubePlayer: document.getElementById('youtube-player'),
+        watchTitle: document.getElementById('watchTitle'),
+        watchChannel: document.getElementById('watchChannel'),
+        watchProgress: document.getElementById('watchProgress'),
+        watchCurrent: document.getElementById('watchCurrent'),
+        watchTotal: document.getElementById('watchTotal'),
+        watchPlayPause: document.getElementById('watchPlayPause'),
+        watchPrev: document.getElementById('watchPrev'),
+        watchNext: document.getElementById('watchNext'),
+        watchShuffle: document.getElementById('watchShuffle'),
+        watchRepeat: document.getElementById('watchRepeat'),
+        watchLike: document.getElementById('watchLike'),
+        suggestedList: document.getElementById('suggestedList')
+    };
 
-        <div class="flex-1 max-w-[480px] car:max-w-[640px] mx-2 sm:mx-4 relative z-10">
-            <div class="relative flex">
-                <input type="text" id="searchInput" placeholder="Tìm kiếm bài hát..." 
-                    class="w-full px-3 sm:px-5 py-2 bg-darkGray border border-gray-700 rounded-l-full focus:outline-none focus:border-red text-sm sm:text-base"
-                    autocomplete="off">
-                <button id="searchBtn" class="px-3 sm:px-6 bg-hoverGray border border-l-0 border-gray-700 rounded-r-full hover:bg-gray-600 transition btn-large">
-                    <i class="fa fa-search text-base sm:text-lg"></i>
-                </button>
-            </div>
-        </div>
-
-        <div class="flex items-center gap-2 sm:gap-3">
-            <button id="favBtn" class="p-2 sm:p-3 hover:bg-darkGray rounded-full transition btn-large" title="Yêu thích">
-                <i class="fa fa-heart"></i>
-            </button>
-            <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-red flex items-center justify-center cursor-pointer shrink-0">
-                <span class="font-bold text-sm">U</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Bố cục chính - Tối ưu không gian -->
-    <div class="flex flex-1 overflow-hidden">
-        <!-- Thanh bên trái - THU HẸP CHỈ HIỆN BIỂU TƯỢNG MẶC ĐỊNH -->
-        <aside id="sidebar" class="w-sidebar-narrow sm:w-sidebar-wide fixed sm:relative left-0 top-0 bottom-0 bg-dark overflow-y-auto hide-scrollbar transition-all duration-300 z-40">
-            <div class="p-2 pt-4">
-                <ul class="space-y-2">
-                    <li>
-                        <a href="#" id="homeLink" class="sidebar-link active flex items-center justify-center sm:justify-start rounded-lg btn-large">
-                            <i class="fa fa-home w-5 text-center text-lg"></i>
-                            <span class="sidebar-text hidden sm:inline">Trang chủ</span>
-                        </a>
-                    </li>
-                    <li>
-                        <a href="#" id="favPageLink" class="sidebar-link flex items-center justify-center sm:justify-start rounded-lg btn-large">
-                            <i class="fa fa-heart w-5 text-center text-lg"></i>
-                            <span class="sidebar-text hidden sm:inline">Yêu thích</span>
-                        </a>
-                    </li>
-                </ul>
-            </div>
-        </aside>
-
-        <div id="sidebarOverlay" class="fixed inset-0 bg-black/60 z-30 hidden sm:hidden" onclick="toggleSidebar()"></div>
-
-        <!-- Nội dung chính -->
-        <main id="mainContent" class="flex-1 overflow-y-auto hide-scrollbar p-3 sm:p-4 ipad:p-6">
-            <!-- Trang chủ -->
-            <section id="homePage">
-                <h2 id="pageTitle" class="text-lg sm:text-xl font-bold mb-3 sm:mb-4">🎵 Gợi ý nghe nhạc</h2>
-                <p class="text-grayText text-sm mb-4">Chọn bài hát → nghe ngay</p>
-                <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 car:grid-cols-3 ipad:grid-cols-4 wide:grid-cols-5 gap-3 sm:gap-4">
-                    <p class="col-span-full text-grayText text-center py-12">Đang tải gợi ý...</p>
-                </div>
-            </section>
-
-            <!-- Trang phát nhạc - TỐI ƯU DIỆN TÍCH, BỎ THANH DƯỚI, CỘT PHẢI LÀ GỢI Ý -->
-            <section id="watchPage" class="hidden">
-                <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
-                    <!-- Cột trái: Video chính - TỐI ĐA DIỆN TÍCH -->
-                    <div class="flex-1 flex flex-col min-w-0">
-                        <div class="player-wrapper mb-3 sm:mb-4 relative">
-                            <div id="playerLoading" class="player-loading">
-                                <i class="fa fa-spinner fa-spin fa-3x text-red mb-3"></i>
-                                <p class="text-grayText">Đang phát...</p>
-                            </div>
-                            <iframe id="youtube-player" frameborder="0" allowfullscreen 
-                                allow="autoplay; encrypted-media; picture-in-picture; fullscreen">
-                            </iframe>
-                        </div>
-                        
-                        <h1 id="watchTitle" class="text-lg sm:text-xl ipad:text-2xl font-bold mb-2 line-clamp-2">Tên bài hát</h1>
-                        <p id="watchChannel" class="text-grayText mb-3 sm:mb-4 text-sm">Tên kênh / Nghệ sĩ</p>
-                        
-                        <!-- Thanh tiến độ chính -->
-                        <div class="mb-3 sm:mb-4">
-                            <input type="range" id="watchProgress" class="progress-bar" min="0" max="100" value="0">
-                            <div class="flex justify-between text-xs sm:text-sm text-grayText mt-1">
-                                <span id="watchCurrent">0:00</span>
-                                <span id="watchTotal">0:00</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Nút điều khiển chính - KHÔNG CÒN THANH PHÁT DƯỚI -->
-                        <div class="flex items-center justify-center gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6">
-                            <button id="watchShuffle" class="text-grayText hover:text-white transition btn-large p-2" title="Xáo trộn">
-                                <i class="fa fa-random fa-lg"></i>
-                            </button>
-                            <button id="watchPrev" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2" title="Bài trước">
-                                <i class="fa fa-step-backward"></i>
-                            </button>
-                            <button id="watchPlayPause" class="w-12 h-12 sm:w-14 sm:h-14 bg-red rounded-full flex items-center justify-center text-white hover:bg-red/90 transition shadow-lg btn-large" title="Phát/Tạm dừng">
-                                <i class="fa fa-play ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>
-                            </button>
-                            <button id="watchNext" class="text-lightText hover:text-white transition text-lg sm:text-xl btn-large p-2" title="Bài tiếp theo">
-                                <i class="fa fa-step-forward"></i>
-                            </button>
-                            <button id="watchRepeat" class="text-grayText hover:text-white transition btn-large p-2" title="Lặp lại">
-                                <i class="fa fa-repeat fa-lg"></i>
-                            </button>
-                        </div>
-                        
-                        <div class="flex flex-wrap gap-2 sm:gap-3">
-                            <button id="watchLike" class="flex items-center gap-2 px-3 sm:px-4 py-2 bg-darkGray rounded-full hover:bg-hoverGray transition btn-large">
-                                <i class="fa fa-heart-o"></i>
-                                <span class="text-sm">Yêu thích</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Cột phải: GỢI Ý BÀI HÁT THAY CHO DANH SÁCH CŨ -->
-                    <div class="w-full lg:w-[360px] xl:w-[400px] shrink-0 flex flex-col min-w-0">
-                        <h3 class="font-bold mb-2 sm:mb-3">🎶 Gợi ý cho bạn</h3>
-                        <div id="suggestedList" class="space-y-2 sm:space-y-3 flex-1 overflow-y-auto hide-scrollbar pr-1">
-                            <p class="text-grayText text-sm py-4 text-center">Đang tải gợi ý...</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <div id="loadingOverlay" class="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] hidden">
-        <div class="text-center">
-            <i class="fa fa-spinner fa-spin fa-3x text-red"></i>
-            <p class="mt-3 text-lg">Đang tìm kiếm...</p>
-        </div>
-    </div>
-
-    <script>
-        // ==================== CẤU HÌNH ====================
-        // ⚠️ Điền khóa API YouTube của bạn vào dòng bên dưới
-        const YOUTUBE_API_KEY = "AIzaSyCFDlmrjK9jeprzZLa3yJzxsLi1zYBNMWI";
-        const API_SEARCH = "https://www.googleapis.com/youtube/v3/search";
-
-        // ==================== DANH SÁCH GỢI Ý MẶC ĐỊNH ====================
-        const SUGGESTED_KEYWORDS = [
-            "nhạc vàng bolero hay nhất",
-            "liên khúc bolero trữ tình",
-            "nhạc vàng xưa chọn lọc",
-            "nhạc nhẹ êm dịu thư giãn",
-            "nhạc trữ tình không lời"
-        ];
-
-        // ==================== TRẠNG THÁI ====================
-        let player = null;
-        let isAPILoaded = false;
-        let isPlayerReady = false;
-        let playlist = [];
-        let favorites = JSON.parse(localStorage.getItem('favMusic') || '[]');
-        let currentIdx = -1;
-        let isShuffle = false;
-        let repeatMode = 0;
-        let isPlaying = false;
-        let suggestedList = [];
-        let pendingVideoId = null;
-        let sidebarCollapsed = false;
-        let timeUpdateInterval = null;
-
-        // ==================== PHẦN TỬ ====================
-        const el = {
-            searchInput: document.getElementById('searchInput'),
-            searchBtn: document.getElementById('searchBtn'),
-            pageTitle: document.getElementById('pageTitle'),
-            videoGrid: document.getElementById('videoGrid'),
-            loadingOverlay: document.getElementById('loadingOverlay'),
-            sidebar: document.getElementById('sidebar'),
-            sidebarOverlay: document.getElementById('sidebarOverlay'),
-            sidebarToggle: document.getElementById('sidebarToggle'),
-            logoLink: document.getElementById('logoLink'),
-            homeLink: document.getElementById('homeLink'),
-            favPageLink: document.getElementById('favPageLink'),
-            favBtn: document.getElementById('favBtn'),
-            homePage: document.getElementById('homePage'),
-            watchPage: document.getElementById('watchPage'),
-            playerLoading: document.getElementById('playerLoading'),
-            youtubePlayer: document.getElementById('youtube-player'),
-            watchTitle: document.getElementById('watchTitle'),
-            watchChannel: document.getElementById('watchChannel'),
-            watchProgress: document.getElementById('watchProgress'),
-            watchCurrent: document.getElementById('watchCurrent'),
-            watchTotal: document.getElementById('watchTotal'),
-            watchPlayPause: document.getElementById('watchPlayPause'),
-            watchPrev: document.getElementById('watchPrev'),
-            watchNext: document.getElementById('watchNext'),
-            watchShuffle: document.getElementById('watchShuffle'),
-            watchRepeat: document.getElementById('watchRepeat'),
-            watchLike: document.getElementById('watchLike'),
-            suggestedList: document.getElementById('suggestedList')
-        };
-
-        // ==================== MENU THAN BÊN - THU HẸP/MỞ RỘNG ====================
-        function toggleSidebar() {
-            sidebarCollapsed = !sidebarCollapsed;
-            if (sidebarCollapsed) {
-                el.sidebar.classList.remove('sm:w-sidebar-wide');
-                el.sidebar.classList.add('w-sidebar-narrow');
-                el.sidebarOverlay.classList.add('hidden');
-            } else {
-                el.sidebar.classList.remove('w-sidebar-narrow');
-                el.sidebar.classList.add('sm:w-sidebar-wide');
-            }
-        }
-        el.sidebarToggle.addEventListener('click', toggleSidebar);
-
-        // ==================== TẢI API YOUTUBE ====================
-        function loadAPI() {
-            const s = document.createElement('script');
-            s.src = "https://www.youtube.com/iframe_api";
-            s.async = true;
-            document.head.appendChild(s);
-        }
-
-        window.onYouTubeIframeAPIReady = function() {
-            isAPILoaded = true;
-            initPlayer();
-        };
-
-        function initPlayer() {
-            if (!window.YT || !window.YT.Player) {
-                setTimeout(initPlayer, 200);
-                return;
-            }
-            player = new YT.Player('youtube-player', {
-                height: '100%',
-                width: '100%',
-                playerVars: { 
-                    autoplay: 0,
-                    controls: 1,
-                    enablejsapi: 1,
-                    origin: location.origin,
-                    rel: 0,
-                    modestbranding: 1,
-                    playsinline: 1
-                },
-                events: {
-                    onReady: onPlayerReady,
-                    onStateChange: onStateChange,
-                    onError: onPlayerError
-                }
-            });
-        }
-
-        function onPlayerReady(e) {
-            isPlayerReady = true;
-            e.target.setVolume(75);
+    // Ẩn trạng thái tải an toàn
+    function hidePlayerLoading() {
+        if (el.playerLoading) {
             el.playerLoading.classList.add('hidden');
-            if (pendingVideoId) {
-                actuallyPlayVideo(pendingVideoId);
-                pendingVideoId = null;
-            }
         }
-
-        function onStateChange(e) {
-            switch (e.data) {
-                case YT.PlayerState.PLAYING:
-                    isPlaying = true;
-                    el.playerLoading.classList.add('hidden');
-                    updatePlayButton();
-                    startTimeUpdate();
-                    break;
-                case YT.PlayerState.PAUSED:
-                    isPlaying = false;
-                    updatePlayButton();
-                    stopTimeUpdate();
-                    break;
-                case YT.PlayerState.ENDED:
-                    stopTimeUpdate();
-                    repeatMode === 2 ? player.seekTo(0) : playNext();
-                    break;
-                case YT.PlayerState.BUFFERING:
-                    el.playerLoading.classList.remove('hidden');
-                    break;
-                case YT.PlayerState.CUED:
-                    el.playerLoading.classList.add('hidden');
-                    break;
-            }
+        if (playerReadyTimeout) {
+            clearTimeout(playerReadyTimeout);
+            playerReadyTimeout = null;
         }
+    }
 
-        function onPlayerError(e) {
-            console.error('Lỗi trình phát:', e.data);
-            el.playerLoading.classList.add('hidden');
-            setTimeout(playNext, 2000);
-        }
-
-        // Cập nhật thời gian phát
-        function startTimeUpdate() {
-            stopTimeUpdate();
-            timeUpdateInterval = setInterval(() => {
-                if (!isPlayerReady || !player.getDuration) return;
-                const t = player.getCurrentTime(), d = player.getDuration();
-                if (d) {
-                    el.watchProgress.value = (t / d) * 100;
-                    el.watchCurrent.textContent = fmtTime(t);
-                    el.watchTotal.textContent = fmtTime(d);
-                }
-            }, 500);
-        }
-
-        function stopTimeUpdate() {
-            if (timeUpdateInterval) {
-                clearInterval(timeUpdateInterval);
-                timeUpdateInterval = null;
-            }
-        }
-
-        // ==================== TÌM KIẾM BÀI HÁT ====================
-        async function searchDirect(q, isSuggestion = false) {
-            if (!q || !q.trim()) return [];
-            if (!isSuggestion) el.loadingOverlay.classList.remove('hidden');
-            
-            try {
-                const res = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
-                if (!res.ok) throw new Error(`Lỗi ${res.status}`);
-                const data = await res.json();
-                if (!data.items) return [];
-                
-                const results = data.items.map(item => ({
-                    id: item.id.videoId,
-                    title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
-                    channel: item.snippet.channelTitle,
-                    thumb: item.snippet.thumbnails.high.url
-                }));
-
-                if (!isSuggestion) {
-                    el.pageTitle.textContent = `Kết quả cho "${q}"`;
-                    renderHomePage(results);
-                    showPage('home');
-                }
-                return results;
-            } catch (err) {
-                console.error('Lỗi tìm kiếm:', err);
-                if (!isSuggestion) alert('Không tìm thấy bài hát, kiểm tra khóa API');
-                return [];
-            } finally {
-                if (!isSuggestion) el.loadingOverlay.classList.add('hidden');
-            }
-        }
-
-        function search(q) {
-            if (!q || q.trim() === '') return;
-            searchDirect(q, false);
-        }
-
-        // Tải gợi ý trang chủ
-        async function loadSuggestions() {
-            const randomKeyword = SUGGESTED_KEYWORDS[Math.floor(Math.random() * SUGGESTED_KEYWORDS.length)];
-            const results = await searchDirect(randomKeyword, true);
-            if (results.length) {
-                renderHomePage(results);
-            } else {
-                el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-8">Không tải được gợi ý, kiểm tra khóa API</p>`;
-            }
-        }
-
-        // Tải gợi ý bên phải khi đang phát
-        async function loadSideSuggestions(title) {
-            const q = title.split(' - ')[0].substring(0, 30);
-            const results = await searchDirect(q + ' nhạc', true);
-            suggestedList = results.filter(v => !playlist.length || v.id !== playlist[currentIdx]?.id).slice(0, 8);
-            renderSuggestedList();
-        }
-
-        // ==================== HIỂN THỊ DANH SÁCH ====================
-        function renderHomePage(list) {
-            el.videoGrid.innerHTML = '';
-            list.forEach(v => {
-                const card = document.createElement('div');
-                card.className = 'cursor-pointer card-hover transition-all duration-200';
-                card.innerHTML = `
-                    <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
-                        <img src="${v.thumb}" alt="${v.title}" loading="eager" class="w-full h-full object-cover">
-                    </div>
-                    <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
-                    <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
-                `;
-                card.onclick = () => playNow(v);
-                el.videoGrid.appendChild(card);
-            });
-        }
-
-        function renderSuggestedList() {
-            if (!suggestedList.length) {
-                el.suggestedList.innerHTML = `<p class="text-grayText text-sm py-4 text-center">Không có gợi ý</p>`;
-                return;
-            }
-            el.suggestedList.innerHTML = '';
-            suggestedList.forEach(v => {
-                const isActive = playlist[currentIdx]?.id === v.id;
-                const item = document.createElement('div');
-                item.className = `suggest-item flex items-center gap-2 sm:gap-3 p-2 rounded-lg cursor-pointer transition ${isActive ? 'active' : ''}`;
-                item.innerHTML = `
-                    <img src="${v.thumb}" alt="" class="w-20 h-12 sm:w-24 sm:h-14 rounded object-cover shrink-0">
-                    <div class="flex-1 min-w-0">
-                        <h4 class="text-sm font-medium line-clamp-2 ${isActive ? 'text-red' : ''}">${v.title}</h4>
-                        <p class="text-xs text-grayText mt-0.5">${v.channel}</p>
-                    </div>
-                `;
-                item.onclick = () => playNow(v);
-                el.suggestedList.appendChild(item);
-            });
-        }
-
-        // ==================== CHUYỂN TRANG ====================
-        function showPage(page) {
-            el.homePage.classList.toggle('hidden', page !== 'home');
-            el.watchPage.classList.toggle('hidden', page !== 'watch');
-            [el.homeLink, el.favPageLink].forEach(link => link.classList.remove('active'));
-            if (page === 'home') el.homeLink.classList.add('active');
-        }
-
-        // ==================== PHÁT NHẠC ====================
-        function playNow(video) {
-            if (!playlist.some(x => x.id === video.id)) {
-                playlist.push(video);
-            }
-            currentIdx = playlist.findIndex(x => x.id === video.id);
-            
-            el.watchTitle.textContent = video.title;
-            el.watchChannel.textContent = video.channel;
-            showPage('watch');
+    // Hiển thị trạng thái tải
+    function showPlayerLoading() {
+        if (el.playerLoading) {
             el.playerLoading.classList.remove('hidden');
+        }
+    }
+
+    // ==================== MENU THAN BÊN - THU HẸP/MỞ RỘNG ====================
+    function toggleSidebar() {
+        sidebarCollapsed = !sidebarCollapsed;
+        if (sidebarCollapsed) {
+            el.sidebar.classList.remove('sm:w-sidebar-wide');
+            el.sidebar.classList.add('w-sidebar-narrow');
+            el.sidebarOverlay.classList.add('hidden');
+        } else {
+            el.sidebar.classList.remove('w-sidebar-narrow');
+            el.sidebar.classList.add('sm:w-sidebar-wide');
+        }
+    }
+    el.sidebarToggle.addEventListener('click', toggleSidebar);
+
+    // ==================== TẢI API YOUTUBE ====================
+    function loadAPI() {
+        const s = document.createElement('script');
+        s.src = "https://www.youtube.com/iframe_api";
+        s.async = true;
+        document.head.appendChild(s);
+        
+        // Hết thời gian chờ API
+        setTimeout(() => {
+            if (!isAPILoaded) {
+                console.warn("Không tải được YouTube API");
+                hidePlayerLoading();
+            }
+        }, 15000);
+    }
+
+    window.onYouTubeIframeAPIReady = function() {
+        isAPILoaded = true;
+        initPlayer();
+    };
+
+    function initPlayer() {
+        if (!window.YT || !window.YT.Player) {
+            setTimeout(initPlayer, 200);
+            return;
+        }
+        
+        // Đặt thời gian chờ tối đa cho trình phát
+        playerReadyTimeout = setTimeout(() => {
+            if (!isPlayerReady) {
+                console.warn("Trình phát không sẵn sàng sau thời gian chờ");
+                hidePlayerLoading();
+            }
+        }, 15000);
+
+        player = new YT.Player('youtube-player', {
+            height: '100%',
+            width: '100%',
+            playerVars: { 
+                autoplay: 0,
+                controls: 1,
+                enablejsapi: 1,
+                origin: window.location.origin,
+                rel: 0,
+                modestbranding: 1,
+                playsinline: 1
+            },
+            events: {
+                onReady: onPlayerReady,
+                onStateChange: onStateChange,
+                onError: onPlayerError
+            }
+        });
+    }
+
+    function onPlayerReady(e) {
+        isPlayerReady = true;
+        e.target.setVolume(75);
+        // ✅ Ẩn loading ngay khi trình phát sẵn sàng
+        hidePlayerLoading();
+        
+        if (pendingVideoId) {
+            actuallyPlayVideo(pendingVideoId);
+            pendingVideoId = null;
+        }
+    }
+
+    function onStateChange(e) {
+        switch (e.data) {
+            case YT.PlayerState.PLAYING:
+                isPlaying = true;
+                hidePlayerLoading();
+                updatePlayButton();
+                startTimeUpdate();
+                break;
+            case YT.PlayerState.PAUSED:
+                isPlaying = false;
+                updatePlayButton();
+                stopTimeUpdate();
+                break;
+            case YT.PlayerState.ENDED:
+                stopTimeUpdate();
+                repeatMode === 2 ? player.seekTo(0) : playNext();
+                break;
+            case YT.PlayerState.BUFFERING:
+                showPlayerLoading();
+                break;
+            case YT.PlayerState.CUED:
+                // ✅ Đã nạp xong nhưng chưa phát → ẩn loading
+                hidePlayerLoading();
+                break;
+        }
+    }
+
+    function onPlayerError(e) {
+        console.error('Lỗi trình phát:', e.data);
+        hidePlayerLoading();
+        // Tự động chuyển bài sau 3 giây nếu lỗi
+        setTimeout(() => {
+            if (playlist.length > 0) playNext();
+        }, 3000);
+    }
+
+    // Cập nhật thời gian phát
+    function startTimeUpdate() {
+        stopTimeUpdate();
+        timeUpdateInterval = setInterval(() => {
+            if (!isPlayerReady || !player || !player.getDuration) return;
+            const t = player.getCurrentTime();
+            const d = player.getDuration();
+            if (d && !isNaN(d)) {
+                el.watchProgress.value = (t / d) * 100;
+                el.watchCurrent.textContent = fmtTime(t);
+                el.watchTotal.textContent = fmtTime(d);
+            }
+        }, 500);
+    }
+
+    function stopTimeUpdate() {
+        if (timeUpdateInterval) {
+            clearInterval(timeUpdateInterval);
+            timeUpdateInterval = null;
+        }
+    }
+
+    // ==================== TÌM KIẾM BÀI HÁT ====================
+    async function searchDirect(q, isSuggestion = false) {
+        if (!q || !q.trim()) return [];
+        if (!isSuggestion) el.loadingOverlay.classList.remove('hidden');
+        
+        try {
+            const res = await fetch(`${API_SEARCH}?part=snippet&q=${encodeURIComponent(q)}&type=video&videoCategoryId=10&maxResults=12&key=${YOUTUBE_API_KEY}`);
             
-            if (isPlayerReady && player) {
-                actuallyPlayVideo(video.id);
-            } else {
-                pendingVideoId = video.id;
+            if (!res.ok) {
+                // Xử lý lỗi API cụ thể
+                if (res.status === 403) throw new Error("Khóa API bị từ chối/hết hạn");
+                if (res.status === 400) throw new Error("Khóa API không hợp lệ");
+                throw new Error(`Lỗi kết nối: ${res.status}`);
             }
             
-            loadSideSuggestions(video.title);
-            updateLikeButton();
-        }
-
-        function actuallyPlayVideo(videoId) {
-            player.loadVideoById({ videoId: videoId, suggestedQuality: 'medium' });
-            player.playVideo();
-        }
-
-        function playNext() {
-            if (!playlist.length) return;
-            let next;
-            if (isShuffle) {
-                do { next = Math.floor(Math.random() * playlist.length); }
-                while (next === currentIdx && playlist.length > 1);
-            } else {
-                next = currentIdx + 1;
-                if (next >= playlist.length) next = repeatMode === 1 ? 0 : currentIdx;
+            const data = await res.json();
+            if (!data.items) return [];
+            
+            const results = data.items.map(item => ({
+                id: item.id.videoId,
+                title: item.snippet.title.replace(/&quot;/g, '"').replace(/&amp;/g, '&'),
+                channel: item.snippet.channelTitle,
+                thumb: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.default?.url
+            }));
+            
+            if (!isSuggestion) {
+                el.pageTitle.textContent = `Kết quả cho "${q}"`;
+                renderHomePage(results);
+                showPage('home');
             }
-            playNow(playlist[next]);
-        }
-
-        function playPrev() {
-            if (!isPlayerReady || currentIdx < 0) return;
-            player.getCurrentTime().then(t => {
-                if (t > 3) return player.seekTo(0);
-                playNow(playlist[currentIdx > 0 ? currentIdx - 1 : playlist.length - 1]);
-            });
-        }
-
-        function togglePlay() {
-            if (!isPlayerReady || currentIdx === -1) return;
-            isPlaying ? player.pauseVideo() : player.playVideo();
-        }
-
-        function updatePlayButton() {
-            el.watchPlayPause.innerHTML = `<i class="fa fa-${isPlaying ? 'pause' : 'play'} ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>`;
-        }
-
-        // ==================== YÊU THÍCH ====================
-        function toggleLike() {
-            if (currentIdx === -1) return;
-            const v = playlist[currentIdx];
-            const i = favorites.findIndex(x => x.id === v.id);
-            i > -1 ? favorites.splice(i, 1) : favorites.unshift(v);
-            localStorage.setItem('favMusic', JSON.stringify(favorites));
-            updateLikeButton();
-        }
-
-        function updateLikeButton() {
-            if (currentIdx === -1) return;
-            const isFav = favorites.some(x => x.id === playlist[currentIdx].id);
-            el.watchLike.innerHTML = `<i class="fa ${isFav ? 'fa-heart text-red' : 'fa-heart-o'}"></i><span>Yêu thích</span>`;
-        }
-
-        function showFavorites() {
-            el.pageTitle.textContent = 'Bài hát yêu thích';
-            if (!favorites.length) {
-                el.videoGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-12">Chưa có bài hát yêu thích</p>`;
-                return;
+            return results;
+        } catch (err) {
+            console.error('Lỗi tìm kiếm:', err);
+            if (!isSuggestion) {
+                alert(`Không tìm thấy: ${err.message}\nKiểm tra khóa API tại Google Cloud Console`);
             }
-            renderHomePage(favorites);
-            showPage('home');
+            return [];
+        } finally {
+            if (!isSuggestion) el.loadingOverlay.classList.add('hidden');
         }
+    }
 
-        // ==================== TIỆN ÍCH ====================
-        function fmtTime(s) {
-            if (!s || isNaN(s)) return '0:00';
-            const m = Math.floor(s/60), ss = Math.floor(s%60);
-            return `${m}:${ss.toString().padStart(2,'0')}`;
+    function search(q) {
+        if (!q || q.trim() === '') return;
+        searchDirect(q, false);
+    }
+
+    // Tải gợi ý trang chủ
+    async function loadSuggestions() {
+        const randomKeyword = SUGGESTED_KEYWORDS[Math.floor(Math.random() * SUGGESTED_KEYWORDS.length)];
+        const results = await searchDirect(randomKeyword, true);
+        
+        if (results.length) {
+            renderHomePage(results);
+        } else {
+            el.videoGrid.innerHTML = `<p class="col-span-full text-red-400 text-center py-8">Không tải được gợi ý — kiểm tra khóa API</p>`;
         }
+    }
 
-        // ==================== SỰ KIỆN ====================
-        function setupEvents() {
-            el.searchInput.addEventListener('keydown', e => e.key === 'Enter' && search(el.searchInput.value.trim()));
-            el.searchBtn.addEventListener('click', () => search(el.searchInput.value.trim()));
-            
-            el.logoLink.addEventListener('click', e => { e.preventDefault(); showPage('home'); });
-            el.homeLink.addEventListener('click', e => { e.preventDefault(); showPage('home'); });
-            el.favPageLink.addEventListener('click', e => { e.preventDefault(); showFavorites(); });
-            el.favBtn.addEventListener('click', e => { e.preventDefault(); showFavorites(); });
-            
-            el.watchPlayPause.addEventListener('click', togglePlay);
-            el.watchNext.addEventListener('click', playNext);
-            el.watchPrev.addEventListener('click', playPrev);
-            
-            el.watchShuffle.addEventListener('click', () => {
-                isShuffle = !isShuffle;
-                el.watchShuffle.classList.toggle('text-red', isShuffle);
-                el.watchShuffle.classList.toggle('text-grayText', !isShuffle);
-            });
-            el.watchRepeat.addEventListener('click', () => {
-                repeatMode = (repeatMode + 1) % 3;
-                el.watchRepeat.classList.toggle('text-red', repeatMode > 0);
-                el.watchRepeat.classList.toggle('text-grayText', repeatMode === 0);
-            });
-            
-            el.watchProgress.addEventListener('input', function() {
-                if (!isPlayerReady || !player) return;
-                player.seekTo((this.value / 100) * player.getDuration());
-            });
-            
-            el.watchLike.addEventListener('click', toggleLike);
-            
-            // PHÁT NGẦM CARPLAY — tiếp tục phát khi chuyển ứng dụng
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && isPlaying && isPlayerReady && player) {
-                    player.playVideo();
+    // Tải gợi ý bên phải khi đang phát
+    async function loadSideSuggestions(title) {
+        const q = title.split(' - ')[0].substring(0, 30);
+        const results = await searchDirect(q + ' nhạc', true);
+        suggestedList = results.filter(v => !playlist.length || v.id !== playlist[currentIdx]?.id).slice(0, 8);
+        renderSuggestedList();
+    }
+
+    // ==================== HIỂN THỊ DANH SÁCH ====================
+    function renderHomePage(list) {
+        el.videoGrid.innerHTML = '';
+        list.forEach(v => {
+            const card = document.createElement('div');
+            card.className = 'cursor-pointer card-hover transition-all duration-200';
+            card.innerHTML = `
+                <div class="relative rounded-xl overflow-hidden bg-gray-800 aspect-video mb-2">
+                    <img src="${v.thumb}" alt="${v.title}" loading="lazy" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x225/272727/F1F1F1?text=Không+có+ảnh'">
+                </div>
+                <h3 class="font-medium line-clamp-2 text-sm sm:text-base">${v.title}</h3>
+                <p class="text-xs sm:text-sm text-grayText mt-1">${v.channel}</p>
+            `;
+            card.onclick = () => playNow(v);
+            el.videoGrid.appendChild(card);
+        });
+    }
+
+    function renderSuggestedList() {
+        if (!suggestedList.length) {
+            el.suggestedList.innerHTML = `<p class="text-grayText text-sm py-4 text-center">Không có gợi ý</p>`;
+            return;
+        }
+        el.suggestedList.innerHTML = '';
+        suggestedList.forEach(v => {
+            const isActive = playlist[currentIdx]?.id === v.id;
+            const item = document.createElement('div');
+            item.className = `suggest-item flex items-center gap-2 sm:gap-3 p-2 rounded-lg cursor-pointer transition ${isActive ? 'active' : ''}`;
+            item.innerHTML = `
+                <img src="${v.thumb}" alt="" class="w-20 h-12 sm:w-24 sm:h-14 rounded object-cover shrink-0" onerror="this.src='https://placehold.co/96x56/272727/F1F1F1?text=+'">
+                <div class="flex-1 min-w-0">
+                    <h4 class="text-sm font-medium line-clamp-2 ${isActive ? 'text-red' : ''}">${v.title}</h4>
+                    <p class="text-xs text-grayText mt-0.5">${v.channel}</p>
+                </div>
+            `;
+            item.onclick = () => playNow(v);
+            el.suggestedList.appendChild(item);
+        });
+    }
+
+    // ==================== CHUYỂN TRANG ====================
+    function showPage(page) {
+        el.homePage.classList.toggle('hidden', page !== 'home');
+        el.watchPage.classList.toggle('hidden', page !== 'watch');
+        [el.homeLink, el.favPageLink].forEach(link => link.classList.remove('active'));
+        if (page === 'home') el.homeLink.classList.add('active');
+    }
+
+    // ==================== PHÁT NHẠC ====================
+    function playNow(video) {
+        if (!video) return;
+        
+        if (!playlist.some(x => x.id === video.id)) {
+            playlist.push(video);
+        }
+        currentIdx = playlist.findIndex(x => x.id === video.id);
+        
+        el.watchTitle.textContent = video.title;
+        el.watchChannel.textContent = video.channel;
+        showPage('watch');
+        showPlayerLoading();
+        
+        if (isPlayerReady && player) {
+            actuallyPlayVideo(video.id);
+        } else {
+            pendingVideoId = video.id;
+            // Đặt giới hạn chờ trình phát
+            setTimeout(() => {
+                if (pendingVideoId) {
+                    pendingVideoId = null;
+                    hidePlayerLoading();
+                    alert("Trình phát chưa sẵn sàng, vui lòng thử lại");
                 }
-            });
+            }, 10000);
         }
+        
+        loadSideSuggestions(video.title);
+        updateLikeButton();
+    }
 
-        // ==================== KHỞI TẠO ====================
-        loadAPI();
-        setupEvents();
-        loadSuggestions();
-    </script>
-</body>
-</html>
+    function actuallyPlayVideo(videoId) {
+        if (!player || !videoId) return;
+        try {
+            player.loadVideoById({ 
+                videoId: videoId, 
+                suggestedQuality: 'medium' 
+            });
+            player.playVideo();
+        } catch (e) {
+            console.error("Lỗi phát video:", e);
+            hidePlayerLoading();
+        }
+    }
+
+    function playNext() {
+        if (!playlist.length) return;
+        let next;
+        if (isShuffle) {
+            do { 
+                next = Math.floor(Math.random() * playlist.length); 
+            } while (next === currentIdx && playlist.length > 1);
+        } else {
+            next = currentIdx + 1;
+            if (next >= playlist.length) {
+                next = repeatMode === 1 ? 0 : currentIdx;
+            }
+        }
+        playNow(playlist[next]);
+    }
+
+    function playPrev() {
+        if (!isPlayerReady || currentIdx < 0 || !player) return;
+        try {
+            const t = player.getCurrentTime();
+            if (t > 3) {
+                player.seekTo(0);
+            } else {
+                playNow(playlist[currentIdx > 0 ? currentIdx - 1 : playlist.length - 1]);
+            }
+        } catch (e) {
+            playNow(playlist[currentIdx > 0 ? currentIdx - 1 : playlist.length - 1]);
+        }
+    }
+
+    function togglePlay() {
+        if (!isPlayerReady || currentIdx === -1 || !player) return;
+        try {
+            isPlaying ? player.pauseVideo() : player.playVideo();
+        } catch (e) {
+            console.error("Lỗi điều khiển phát:", e);
+        }
+    }
+
+    function updatePlayButton() {
+        el.watchPlayPause.innerHTML = `<i class="fa fa-${isPlaying ? 'pause' : 'play'} ml-0.5 sm:ml-1 text-lg sm:text-xl"></i>`;
+    }
+
+    // ==================== YÊU THÍCH ====================
+    function toggleLike() {
+        if (currentIdx === -1) return;
+        const v = playlist[currentIdx];
+        const i = favorites.findIndex(x => x.id === v.id);
+        i > -1 ? favorites.splice(i, 1) : favorites.unshift(v);
+        localStorage.setItem('favMusic', JSON.stringify(favorites));
+        updateLikeButton();
+    }
+
+    function updateLikeButton() {
+        if (currentIdx === -1) return;
+        const isFav = favorites.some(x => x.id === playlist[currentIdx].id);
+        el.watchLike.innerHTML = `<i class="fa ${isFav ? 'fa-heart text-red' : 'fa-heart-o'}"></i><span>Yêu thích</span>`;
+    }
+
+    function showFavorites() {
+        el.pageTitle.textContent = 'Bài hát yêu thích';
+        if (!favorites.length) {
+            el.videoGrid.innerHTML = `<p class="col-span-full text-grayText text-center py-12">Chưa có bài hát yêu thích</p>`;
+            return;
+        }
+        renderHomePage(favorites);
+        showPage('home');
+    }
+
+    // ==================== TIỆN ÍCH ====================
+    function fmtTime(s) {
+        if (!s || isNaN(s)) return '0:00';
+        const m = Math.floor(s/60);
+        const ss = Math.floor(s%60);
+        return `${m}:${ss.toString().padStart(2,'0')}`;
+    }
+
+    // ==================== SỰ KIỆN ====================
+    function setupEvents() {
+        el.searchInput.addEventListener('keydown', e => e.key === 'Enter' && search(el.searchInput.value.trim()));
+        el.searchBtn.addEventListener('click', () => search(el.searchInput.value.trim()));
+        
+        el.logoLink.addEventListener('click', e => { e.preventDefault(); showPage('home'); });
+        el.homeLink.addEventListener('click', e => { e.preventDefault(); showPage('home'); });
+        el.favPageLink.addEventListener('click', e => { e.preventDefault(); showFavorites(); });
+        el.favBtn.addEventListener('click', e => { e.preventDefault(); showFavorites(); });
+        
+        el.watchPlayPause.addEventListener('click', togglePlay);
+        el.watchNext.addEventListener('click', playNext);
+        el.watchPrev.addEventListener('click', playPrev);
+        
+        el.watchShuffle.addEventListener('click', () => {
+            isShuffle = !isShuffle;
+            el.watchShuffle.classList.toggle('text-red', isShuffle);
+            el.watchShuffle.classList.toggle('text-grayText', !isShuffle);
+        });
+        el.watchRepeat.addEventListener('click', () => {
+            repeatMode = (repeatMode + 1) % 3;
+            el.watchRepeat.classList.toggle('text-red', repeatMode > 0);
+            el.watchRepeat.classList.toggle('text-grayText', repeatMode === 0);
+        });
+        
+        el.watchProgress.addEventListener('input', function() {
+            if (!isPlayerReady || !player || !player.getDuration) return;
+            player.seekTo((this.value / 100) * player.getDuration());
+        });
+        
+        el.watchLike.addEventListener('click', toggleLike);
+        
+        // Tiếp tục phát khi quay lại tab
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && isPlaying && isPlayerReady && player) {
+                try { player.playVideo(); } catch (e) {}
+            }
+        });
+    }
+
+    // ==================== KHỞI TẠO ====================
+    loadAPI();
+    setupEvents();
+    loadSuggestions();
+</script>
